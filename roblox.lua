@@ -1,4 +1,4 @@
--- Memastikan GUI lama dihapus jika dijalankan ulang
+-- Menghapus GUI lama jika ada
 local oldGui = game.CoreGui:FindFirstChild("SptzyyCopyGui")
 if oldGui then oldGui:Destroy() end
 
@@ -9,7 +9,6 @@ local fileName = "sptzyy_game_data.json"
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SptzyyCopyGui"
 ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -19,14 +18,13 @@ MainFrame.BorderSizePixel = 0
 MainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
 MainFrame.Size = UDim2.new(0, 300, 0, 300)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Fitur geser GUI
+MainFrame.Draggable = true -- Support Geser
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Name = "Title"
 Title.Parent = MainFrame
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
@@ -36,7 +34,6 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Name = "CloseBtn"
 CloseBtn.Parent = MainFrame
 CloseBtn.Position = UDim2.new(1, -35, 0, 5)
 CloseBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -45,9 +42,10 @@ CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 5)
+local CloseCorner = Instance.new("UICorner", CloseBtn)
+CloseCorner.CornerRadius = UDim.new(0, 5)
 
--- Style Tombol (Fungsi Helper)
+-- Fungsi Helper Tombol
 local function createButton(name, pos, text, color)
     local btn = Instance.new("TextButton")
     btn.Name = name
@@ -59,12 +57,14 @@ local function createButton(name, pos, text, color)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.TextSize = 14
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    local btnCorner = Instance.new("UICorner", btn)
+    btnCorner.CornerRadius = UDim.new(0, 8)
     return btn
 end
 
 local CopyBtn = createButton("CopyBtn", UDim2.new(0, 20, 0, 80), "COPY MAP (No Terrain)", Color3.fromRGB(60, 60, 60))
 local PasteBtn = createButton("PasteBtn", UDim2.new(0, 20, 0, 150), "PASTE TO NEW MAP", Color3.fromRGB(60, 60, 60))
+
 local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, 0, 0, 30)
 StatusLabel.Position = UDim2.new(0, 0, 0, 220)
@@ -81,17 +81,16 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 CopyBtn.MouseButton1Click:Connect(function()
-    StatusLabel.Text = "Status: Copying... (Wait)"
+    StatusLabel.Text = "Status: Copying..."
     task.wait(0.1)
     
     local mapData = {}
     local count = 0
     
     for _, obj in pairs(game.Workspace:GetDescendants()) do
-        -- Filter: Hanya BasePart, Bukan Terrain, Bukan Karakter Pemain
         if obj:IsA("BasePart") and not obj:IsA("Terrain") then
-            local isCharacter = obj:FindFirstAncestorOfClass("Model") and obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid")
-            if not isCharacter then
+            local isChar = obj:FindFirstAncestorOfClass("Model") and obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid")
+            if not isChar then
                 table.insert(mapData, {
                     ClassName = obj.ClassName,
                     Name = obj.Name,
@@ -112,16 +111,14 @@ CopyBtn.MouseButton1Click:Connect(function()
     if success then
         writefile(fileName, encoded)
         StatusLabel.Text = "Status: Saved " .. count .. " parts!"
-        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     else
         StatusLabel.Text = "Status: Error Encoding!"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end)
 
 PasteBtn.MouseButton1Click:Connect(function()
     if not isfile(fileName) then
-        StatusLabel.Text = "Status: No save file found!"
+        StatusLabel.Text = "Status: File Not Found!"
         return
     end
 
@@ -147,7 +144,5 @@ PasteBtn.MouseButton1Click:Connect(function()
             p.Parent = folder
         end)
     end
-    
     StatusLabel.Text = "Status: Paste Complete!"
-    StatusLabel.TextColor3 = Color3.fromRGB(100, 100, 255)
 end)
