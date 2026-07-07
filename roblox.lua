@@ -17,7 +17,6 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
-local IsInvisible = false -- Status awal invisible
 
 -- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
@@ -27,8 +26,8 @@ ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 300) -- Ukuran Y dinaikkan menjadi 300 untuk menampung tombol baru
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 230, 0, 270)
+MainFrame.Position = UDim2.new(0.5, -115, 0.5, -135)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -56,8 +55,8 @@ Title.Parent = MainFrame
 
 -- Tombol Copy
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 206, 0, 32)
-CopyButton.Position = UDim2.new(0, 12, 0, 42)
+CopyButton.Size = UDim2.new(0, 206, 0, 35)
+CopyButton.Position = UDim2.new(0, 12, 0, 45)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
@@ -69,25 +68,10 @@ local CopyButtonCorner = Instance.new("UICorner")
 CopyButtonCorner.CornerRadius = UDim.new(0, 6)
 CopyButtonCorner.Parent = CopyButton
 
--- Tombol Invisible Toggle (On/Off)
-local InvisibleButton = Instance.new("TextButton")
-InvisibleButton.Size = UDim2.new(0, 206, 0, 26)
-InvisibleButton.Position = UDim2.new(0, 12, 0, 78)
-InvisibleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-InvisibleButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-InvisibleButton.Text = "👻 Invisible: OFF"
-InvisibleButton.Font = Enum.Font.SourceSansSemibold
-InvisibleButton.TextSize = 12
-InvisibleButton.Parent = MainFrame
-
-local InvisibleCorner = Instance.new("UICorner")
-InvisibleCorner.CornerRadius = UDim.new(0, 6)
-InvisibleCorner.Parent = InvisibleButton
-
 -- Label Penanda List
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 110) -- Disesuaikan posisinya turun ke bawah
+ListLabel.Position = UDim2.new(0, 12, 0, 90)
 ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -99,7 +83,7 @@ ListLabel.Parent = MainFrame
 -- Scrolling Frame
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 132) -- Disesuaikan posisinya turun ke bawah
+ListScroll.Position = UDim2.new(0, 12, 0, 110)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -117,7 +101,7 @@ ListLayout.Parent = ListScroll
 -- Tombol Refresh List
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 265) -- Disesuaikan posisinya turun ke bawah
+RefreshButton.Position = UDim2.new(0, 12, 0, 235)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -154,53 +138,6 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ LOGIKA INVISIBLE AVATAR LOCAL ]]
-local function setAvatarVisibility(visible)
-    local char = LocalPlayer.Character
-    if not char then return end
-    
-    local transparencyValue = visible and 0 or 1
-    
-    -- Mengatur visibilitas bagian tubuh (Parts) dan Decal (Wajah, Tato, dsb)
-    for _, obj in pairs(char:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
-            obj.Transparency = transparencyValue
-        elseif obj:IsA("Decal") then
-            obj.Transparency = transparencyValue
-        end
-    end
-    
-    -- Menyembunyikan nama di atas kepala (Nametag / HealthBar)
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.DisplayDistanceType = visible and Enum.HumanoidDisplayDistanceType.Viewer or Enum.HumanoidDisplayDistanceType.None
-    end
-end
-
--- Memicu fungsi invisible ulang ketika player mati & respawn kembali
-LocalPlayer.CharacterAdded:Connect(function(char)
-    if IsInvisible then
-        task.wait(0.5) -- Menunggu karakter selesai load sempurna
-        setAvatarVisibility(false)
-    end
-end)
-
-InvisibleButton.MouseButton1Click:Connect(function()
-    IsInvisible = not IsInvisible
-    if IsInvisible then
-        setAvatarVisibility(false)
-        InvisibleButton.Text = "✨ Invisible: ON"
-        InvisibleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-        InvisibleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        setAvatarVisibility(true)
-        InvisibleButton.Text = "👻 Invisible: OFF"
-        InvisibleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-        InvisibleButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    end
-end)
-
-
 -- [[ LOGIKA CORE ANTI-LIMIT LAYER ]]
 
 local function getRelativePath(obj)
@@ -213,17 +150,38 @@ local function getRelativePath(obj)
     return path
 end
 
--- Fungsi cek apakah objek adalah bagian dari karakter player manapun
 local function isAPlayerCharacter(obj)
     for _, p in pairs(Players:GetPlayers()) do
         if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then
             return true
         end
     end
+    
+    if obj:IsA("Model") or obj:IsA("BasePart") then
+        local rootPart = obj:IsA("Model") and obj.PrimaryPart or (obj:IsA("BasePart") and obj or nil)
+        if rootPart then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local pRoot = p.Character.HumanoidRootPart
+                    local distance = (rootPart.Position - pRoot.Position).Magnitude
+                    if distance < 6 and rootPart.Anchored == false then
+                        return true
+                    end
+                end
+            end
+        end
+    end
     return false
 end
 
--- 1. PROSES COPY DENGAN FIX PROTEKSI MESH & FILTER PLAYER
+local AllowedSupportClasses = {
+    ["Texture"] = true, ["Decal"] = true, ["SurfaceAppearance"] = true, 
+    ["SpecialMesh"] = true, ["BlockMesh"] = true, ["CylinderMesh"] = true,
+    ["ParticleEmitter"] = true, ["PointLight"] = true, ["SpotLight"] = true, ["SurfaceLight"] = true,
+    ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true
+}
+
+-- 1. PROSES COPY DENGAN PROPERTI PENUH & POSISI ASLI
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -239,8 +197,7 @@ CopyButton.MouseButton1Click:Connect(function()
     local objectsToScan = TargetFolder:GetDescendants()
     
     for _, obj in pairs(objectsToScan) do
-        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            -- FILTER DIPERKETAT: Memastikan objek bukan kamera, terrain, ataupun bagian tubuh player
+        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
                 
@@ -251,28 +208,58 @@ CopyButton.MouseButton1Click:Connect(function()
                     Name = obj.Name,
                     ClassName = obj.ClassName,
                     RelativePath = relPath,
-                    Depth = #relPath
+                    Depth = #relPath,
+                    Properties = {}
                 }
                 
                 if obj:IsA("BasePart") then
-                    data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                    data.CFrame = {obj.CFrame:GetComponents()}
-                    data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                    data.Material = obj.Material.Name
-                    data.Transparency = obj.Transparency
-                    data.Anchored = obj.Anchored
-                    data.CanCollide = obj.CanCollide
+                    data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                    data.Properties.CFrame = {obj.CFrame:GetComponents()}
+                    data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
+                    data.Properties.Material = obj.Material.Name
+                    data.Properties.Transparency = obj.Transparency
+                    data.Properties.Reflectance = obj.Reflectance
+                    data.Properties.Anchored = obj.Anchored
+                    data.Properties.CanCollide = obj.CanCollide
+                    data.Properties.CanTouch = obj.CanTouch
+                    data.Properties.CastShadow = obj.CastShadow
                     
-                    -- FIX PROTEKSI: Menggunakan pcall agar jika properti MeshId/TextureId tidak ada, script tidak akan crash/stuck!
                     if obj:IsA("MeshPart") then
-                        pcall(function() data.MeshId = obj.MeshId end)
-                        pcall(function() data.TextureId = obj.TextureId end)
+                        pcall(function() data.Properties.MeshId = obj.MeshId end)
+                        pcall(function() data.Properties.TextureId = obj.TextureId end)
                     elseif obj:IsA("UnionOperation") then
-                        pcall(function() data.AssetId = obj.AssetId end)
+                        pcall(function() data.Properties.AssetId = obj.AssetId end)
                     end
-                end
-                table.insert(SaveData, data)
                 
+                elseif obj:IsA("Model") then
+                    pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
+
+                elseif AllowedSupportClasses[obj.ClassName] then
+                    pcall(function() data.Properties.Texture = obj.Texture end)
+                    pcall(function() data.Properties.TextureId = obj.TextureId end)
+                    pcall(function() data.Properties.MeshId = obj.MeshId end)
+                    pcall(function() data.Properties.MeshType = obj.MeshType.Name end)
+                    pcall(function() data.Properties.Face = obj.Face.Name end)
+                    pcall(function() data.Properties.Transparency = obj.Transparency end)
+                    
+                    pcall(function() data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end)
+                    pcall(function() data.Properties.StudsPerTileU = obj.StudsPerTileU end)
+                    pcall(function() data.Properties.StudsPerTileV = obj.StudsPerTileV end)
+                    pcall(function() data.Properties.OffsetStudsU = obj.OffsetStudsU end)
+                    pcall(function() data.Properties.OffsetStudsV = obj.OffsetStudsV end)
+                    
+                    pcall(function() data.Properties.Brightness = obj.Brightness end)
+                    pcall(function() data.Properties.Range = obj.Range end)
+                    pcall(function() data.Properties.Shadows = obj.Shadows end)
+                    pcall(function() data.Properties.Angle = obj.Angle end)
+                    pcall(function() data.Properties.Enabled = obj.Enabled end)
+                    
+                    pcall(function() data.Properties.Rate = obj.Rate end)
+                    pcall(function() data.Properties.Speed = {obj.Speed.Min, obj.Speed.Max} end)
+                    pcall(function() data.Properties.Lifetime = {obj.Lifetime.Min, obj.Lifetime.Max} end)
+                end
+                
+                table.insert(SaveData, data)
                 if count % 250 == 0 then task.wait() end
             end
         end
@@ -285,11 +272,10 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN (DENGAN CORE CONTAINER UNTUK ICON DELETE)
 _G.UpdatePasteList = function()
-    -- Membersihkan semua item di dalam list (baik TextButton maupun Frame kontainer baru)
     for _, child in pairs(ListScroll:GetChildren()) do
-        if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
+        if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
     end
     
     if not listfiles then return end
@@ -301,15 +287,15 @@ _G.UpdatePasteList = function()
             anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
-            -- Frame Kontainer Utama per Baris List
+            -- Container Frame untuk memisahkan Tombol Pilih dan Tombol Delete
             local ItemFrame = Instance.new("Frame")
             ItemFrame.Size = UDim2.new(1, -6, 0, 26)
             ItemFrame.BackgroundTransparency = 1
             ItemFrame.Parent = ListScroll
             
-            -- Tombol Pilih File / Paste (Ukuran dikurangi di kanan untuk tempat tombol delete)
+            -- Tombol Utama (Pilih / Paste File)
             local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -28, 1, 0)
+            FileSelectBtn.Size = UDim2.new(1, -26, 1, 0) -- Beri space di kanan untuk tombol delete
             FileSelectBtn.Position = UDim2.new(0, 0, 0, 0)
             FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
@@ -323,35 +309,36 @@ _G.UpdatePasteList = function()
             BtnCorner.CornerRadius = UDim.new(0, 4)
             BtnCorner.Parent = FileSelectBtn
             
-            -- Tombol Delete ❌ di Sudut Kanan Berdampingan
+            -- Tombol Delete (❌) di Sudut Kanan Bersebelahan dengan FileSelectBtn
             local DeleteBtn = Instance.new("TextButton")
-            DeleteBtn.Size = UDim2.new(0, 24, 1, 0)
-            DeleteBtn.Position = UDim2.new(1, -24, 0, 0)
+            DeleteBtn.Size = UDim2.new(0, 22, 1, 0)
+            DeleteBtn.Position = UDim2.new(1, -22, 0, 0)
             DeleteBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 20)
-            DeleteBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+            DeleteBtn.TextColor3 = Color3.fromRGB(255, 70, 70)
             DeleteBtn.Text = "❌"
             DeleteBtn.Font = Enum.Font.SourceSansBold
-            DeleteBtn.TextSize = 11
+            DeleteBtn.TextSize = 10
             DeleteBtn.Parent = ItemFrame
             
             local DelCorner = Instance.new("UICorner")
             DelCorner.CornerRadius = UDim.new(0, 4)
             DelCorner.Parent = DeleteBtn
-            
-            -- Fitur Aksi Hapus File
+
+            -- Logika Hapus File Saat Tombol Delete diklik
             DeleteBtn.MouseButton1Click:Connect(function()
                 if delfile then
                     pcall(function()
                         delfile(file)
                     end)
+                    ItemFrame:Destroy()
+                    task.wait(0.1)
                     _G.UpdatePasteList()
                 else
-                    DeleteBtn.Text = "⚠️"
-                    task.wait(1)
-                    DeleteBtn.Text = "❌"
+                    DeleteBtn.Text = "No!"
                 end
             end)
             
+            -- Logika Paste Saat Tombol File Diklik
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
@@ -396,7 +383,6 @@ _G.UpdatePasteList = function()
                     for _, data in pairs(loadedData) do
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
-                            
                             local existingObj = targetParent:FindFirstChild(data.Name)
                             if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
                                 return
@@ -406,12 +392,35 @@ _G.UpdatePasteList = function()
                             FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
                             
                             local newObj
-                            if data.ClassName == "MeshPart" or (data.MeshId and data.MeshId ~= "") then
+                            local props = data.Properties or {}
+                            
+                            if AllowedSupportClasses[data.ClassName] then
+                                newObj = Instance.new(data.ClassName)
+                                pcall(function() if props.Texture then newObj.Texture = props.Texture end end)
+                                pcall(function() if props.TextureId then newObj.TextureId = props.TextureId end end)
+                                pcall(function() if props.MeshId then newObj.MeshId = props.MeshId end end)
+                                pcall(function() if props.MeshType then newObj.MeshType = Enum.MeshType[props.MeshType] end end)
+                                pcall(function() if props.Face then newObj.Face = Enum.NormalId[props.Face] end end)
+                                pcall(function() if props.Transparency then newObj.Transparency = props.Transparency end end)
+                                pcall(function() if props.Enabled ~= nil then newObj.Enabled = props.Enabled end end)
+                                pcall(function() if props.Color3 then newObj.Color3 = Color3.fromRGB(unpack(props.Color3)) end end)
+                                pcall(function() if props.StudsPerTileU then newObj.StudsPerTileU = props.StudsPerTileU end end)
+                                pcall(function() if props.StudsPerTileV then newObj.StudsPerTileV = props.StudsPerTileV end end)
+                                pcall(function() if props.OffsetStudsU then newObj.OffsetStudsU = props.OffsetStudsU end end)
+                                pcall(function() if props.OffsetStudsV then newObj.OffsetStudsV = props.OffsetStudsV end end)
+                                pcall(function() if props.Brightness then newObj.Brightness = props.Brightness end end)
+                                pcall(function() if props.Range then newObj.Range = props.Range end end)
+                                pcall(function() if props.Shadows ~= nil then newObj.Shadows = props.Shadows end end)
+                                pcall(function() if props.Angle then newObj.Angle = props.Angle end end)
+                                pcall(function() if props.Rate then newObj.Rate = props.Rate end end)
+                                pcall(function() if props.Speed then newObj.Speed = NumberRange.new(props.Speed[1], props.Speed[2]) end end)
+                                pcall(function() if props.Lifetime then newObj.Lifetime = NumberRange.new(props.Lifetime[1], props.Lifetime[2]) end end)
+                            elseif data.ClassName == "MeshPart" or (props.MeshId and props.MeshId ~= "") then
                                 newObj = Instance.new("Part")
                                 local specialMesh = Instance.new("SpecialMesh")
                                 specialMesh.MeshType = Enum.MeshType.FileMesh
-                                specialMesh.MeshId = data.MeshId or ""
-                                specialMesh.TextureId = data.TextureId or ""
+                                specialMesh.MeshId = props.MeshId or ""
+                                specialMesh.TextureId = props.TextureId or ""
                                 specialMesh.Parent = newObj
                             elseif data.ClassName == "Folder" or data.ClassName == "Model" or data.ClassName == "Part" or data.ClassName == "WedgePart" or data.ClassName == "CornerWedgePart" or data.ClassName == "TrussPart" then
                                 newObj = Instance.new(data.ClassName)
@@ -421,18 +430,24 @@ _G.UpdatePasteList = function()
                             
                             newObj.Name = data.Name
                             
-                            if data.CFrame and newObj:IsA("BasePart") then
-                                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
-                                newObj.CFrame = CFrame.new(unpack(data.CFrame))
-                                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
-                                pcall(function() newObj.Material = Enum.Material[data.Material] end)
-                                newObj.Transparency = data.Transparency
-                                newObj.Anchored = data.Anchored
-                                newObj.CanCollide = data.CanCollide
+                            if newObj:IsA("BasePart") and props.CFrame then
+                                newObj.Size = Vector3.new(props.Size[1], props.Size[2], props.Size[3])
+                                newObj.CFrame = CFrame.new(unpack(props.CFrame))
+                                newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3])
+                                pcall(function() newObj.Material = Enum.Material[props.Material] end)
+                                newObj.Transparency = props.Transparency
+                                pcall(function() newObj.Reflectance = props.Reflectance end)
+                                newObj.Anchored = props.Anchored
+                                newObj.CanCollide = props.CanCollide
+                                pcall(function() newObj.CanTouch = props.CanTouch end)
+                                pcall(function() newObj.CastShadow = props.CastShadow end)
+                            end
+                            
+                            if newObj:IsA("Model") and props.WorldPivot then
+                                pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
                             end
                             
                             newObj.Parent = targetParent
-                            
                             if pasteCount % 250 == 0 then task.wait() end
                         end)
                     end
