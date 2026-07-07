@@ -1,34 +1,47 @@
--- Delta Executor Optimized & Fixed Version
+-- Delta Executor Optimized & Fixed UI Display Version
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local fileName = "sptzyy_game_data.json"
 
--- Hapus GUI lama agar tidak menumpuk saat di-execute ulang
-local oldGui = game:GetService("CoreGui"):FindFirstChild("SptzyyCopyGui")
+-- Deteksi Parent GUI yang aman untuk Delta
+local TargetParent = nil
+if gethui then
+    TargetParent = gethui()
+elseif LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") then
+    TargetParent = LocalPlayer.PlayerGui
+else
+    TargetParent = game:GetService("CoreGui")
+end
+
+-- Hapus GUI lama agar tidak menumpuk
+local oldGui = TargetParent:FindFirstChild("SptzyyCopyGui")
 if oldGui then oldGui:Destroy() end
 
 -- --- UI CONSTRUCTION ---
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SptzyyCopyGui"
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Parent = TargetParent
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 300, 0, 300)
+-- Diposisikan tepat di tengah layar agar langsung terlihat
+MainFrame.Position = UDim2.new(0.5, -130, 0.4, -130)
+MainFrame.Size = UDim2.new(0, 260, 0, 260)
 MainFrame.Active = true
+MainFrame.Draggable = true -- Fallback otomatis untuk beberapa versi executor
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
 
--- Logika Geser (Mobile & PC Friendly untuk Delta)
+-- Logika Geser Manual (Sangat lancar di Mobile/Touch)
 local dragging, dragInput, dragStart, startPos
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -54,22 +67,22 @@ end)
 
 local Title = Instance.new("TextLabel")
 Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
 Title.Text = "Sptzyy Copy Game"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
+Title.TextSize = 16
 
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = MainFrame
-CloseBtn.Position = UDim2.new(1, -40, 0, 10)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 8)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 14
+CloseBtn.TextSize = 12
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 5)
 
 local function createButton(name, pos, text, color)
@@ -77,29 +90,29 @@ local function createButton(name, pos, text, color)
     btn.Name = name
     btn.Parent = MainFrame
     btn.Position = pos
-    btn.Size = UDim2.new(0, 260, 0, 55)
+    btn.Size = UDim2.new(0, 220, 0, 45)
     btn.BackgroundColor3 = color
     btn.Font = Enum.Font.GothamSemibold
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
+    btn.TextSize = 13
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     return btn
 end
 
-local CopyBtn = createButton("CopyBtn", UDim2.new(0, 20, 0, 70), "COPY ALL PARTS", Color3.fromRGB(56, 142, 60))
-local PasteBtn = createButton("PasteBtn", UDim2.new(0, 20, 0, 140), "PASTE TO WORKSPACE", Color3.fromRGB(21, 101, 192))
+local CopyBtn = createButton("CopyBtn", UDim2.new(0, 20, 0, 60), "COPY ALL PARTS", Color3.fromRGB(56, 142, 60))
+local PasteBtn = createButton("PasteBtn", UDim2.new(0, 20, 0, 120), "PASTE TO WORKSPACE", Color3.fromRGB(21, 101, 192))
 
 local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, 0, 0, 40)
-StatusLabel.Position = UDim2.new(0, 0, 0, 230)
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
+StatusLabel.Position = UDim2.new(0, 0, 0, 200)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.Text = "Ready to Copy"
 StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLabel.TextSize = 13
+StatusLabel.TextSize = 12
 
--- --- LOGIKA UTAMA (ANTI-CRASH) ---
+-- --- LOGIKA UTAMA ---
 
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
@@ -113,17 +126,14 @@ CopyBtn.MouseButton1Click:Connect(function()
     local character = LocalPlayer.Character
     
     for i, obj in ipairs(descendants) do
-        -- Biar Delta tidak crash/freeze saat game memiliki banyak part (yield setiap 500 objek)
-        if i % 500 == 0 then
+        if i % 400 == 0 then
             StatusLabel.Text = "Scanning: " .. math.floor((i / total) * 100) .. "%"
             task.wait()
         end
         
         if obj:IsA("BasePart") and not obj:IsA("Terrain") then
             if not character or not obj:IsDescendantOf(character) then
-                -- Ambil komponen CFrame dengan aman
                 local cfComponents = {obj.CFrame:GetComponents()}
-                
                 table.insert(mapData, {
                     CN = obj.ClassName,
                     NM = obj.Name,
@@ -142,7 +152,6 @@ CopyBtn.MouseButton1Click:Connect(function()
     StatusLabel.Text = "Saving file..."
     task.wait(0.1)
     
-    -- Penanganan simpan file yang aman untuk exploit mobile
     local success, err = pcall(function()
         writefile(fileName, HttpService:JSONEncode(mapData))
     end)
@@ -150,15 +159,14 @@ CopyBtn.MouseButton1Click:Connect(function()
     if success then
         StatusLabel.Text = "Saved: " .. #mapData .. " Parts!"
     else
-        StatusLabel.Text = "Save Failed! Check Console"
+        StatusLabel.Text = "Save Failed!"
         warn("Error saving file: ", err)
     end
 end)
 
 PasteBtn.MouseButton1Click:Connect(function()
-    -- Cek ketersediaan fungsi isfile bawaan executor
     if not isfile or not isfile(fileName) then 
-        StatusLabel.Text = "No Save Found / Unsupported!" 
+        StatusLabel.Text = "No Save Found!" 
         return 
     end
     
@@ -182,7 +190,6 @@ PasteBtn.MouseButton1Click:Connect(function()
     
     local totalParts = #data
     for i, d in ipairs(data) do
-        -- Yield setiap 200 parts saat spawn agar tidak lag parah di Delta
         if i % 200 == 0 then
             StatusLabel.Text = "Pasting: " .. math.floor((i / totalParts) * 100) .. "%"
             task.wait()
