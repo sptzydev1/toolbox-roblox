@@ -2,90 +2,51 @@
 local HttpService = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Mendapatkan Nama Game Secara Otomatis
-local GameName = "Unknown_Game"
-pcall(function()
-    local productInfo = MarketplaceService:GetProductInfo(game.PlaceId)
-    if productInfo and productInfo.Name then
-        GameName = productInfo.Name:gsub("[%s%p]", "_") -- Bersihkan simbol/spasi
-    end
-end)
-
-local FILE_PREFIX = "GameCopy_"
+local FILE_NAME = "CrossGameAdvancedClipboard.json" 
 local TargetFolder = workspace -- Meng-scan seluruh Workspace
 
--- [[ CREATING GUI (Persegi Empat dengan List Menu) ]]
+-- [[ CREATING GUI (Persegi Empat Kecil) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "MultiGameListGui"
+ScreenGui.Name = "CrossGameAdvancedGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 180, 0, 220)
-MainFrame.Position = UDim2.new(0.5, -90, 0.5, -110)
-MainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
+MainFrame.Size = UDim2.new(0, 160, 0, 80)
+MainFrame.Position = UDim2.new(0.5, -80, 0.5, -40)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 35)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 150)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.BackgroundTransparency = 1
-Title.Text = "🎮 MULTI-COPY CHANGER"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 13
-Title.Parent = MainFrame
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout.Parent = MainFrame
 
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 160, 0, 30)
-CopyButton.Position = UDim2.new(0, 10, 0, 30)
-CopyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+CopyButton.Size = UDim2.new(0, 140, 0, 30)
+CopyButton.BackgroundColor3 = Color3.fromRGB(50, 45, 55)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "📦 NEW COPY (RANDOM)"
+CopyButton.Text = "📦 COPY ALL + STRUCT"
 CopyButton.Font = Enum.Font.SourceSansBold
 CopyButton.TextSize = 12
 CopyButton.Parent = MainFrame
 
-local ListLabel = Instance.new("TextLabel")
-ListLabel.Size = UDim2.new(1, -20, 0, 20)
-ListLabel.Position = UDim2.new(0, 10, 0, 65)
-ListLabel.BackgroundTransparency = 1
-ListLabel.Text = "Pilih Data File Untuk Di-paste:"
-ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-ListLabel.TextXAlignment = Enum.TextXAlignment.Left
-ListLabel.Font = Enum.Font.SourceSans
-ListLabel.TextSize = 11
-ListLabel.Parent = MainFrame
-
-local ListScroll = Instance.new("ScrollingFrame")
-ListScroll.Size = UDim2.new(0, 160, 0, 110)
-ListScroll.Position = UDim2.new(0, 10, 0, 85)
-ListScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
-ListScroll.BorderSizePixel = 0
-ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-ListScroll.ScrollBarThickness = 4
-ListScroll.Parent = MainFrame
-
-local ListLayout = Instance.new("UIListLayout")
-ListLayout.Padding = UDim.new(0, 3)
-ListLayout.Parent = ListScroll
-
-local RefreshButton = Instance.new("TextButton")
-RefreshButton.Size = UDim2.new(0, 160, 0, 15)
-RefreshButton.Position = UDim2.new(0, 10, 0, 200)
-RefreshButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-RefreshButton.Text = "🔄 Refresh List"
-RefreshButton.Font = Enum.Font.SourceSans
-RefreshButton.TextSize = 10
-RefreshButton.Parent = MainFrame
+local PasteButton = Instance.new("TextButton")
+PasteButton.Size = UDim2.new(0, 140, 0, 30)
+PasteButton.BackgroundColor3 = Color3.fromRGB(50, 45, 55)
+PasteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PasteButton.Text = "📥 PASTE ALL + STRUCT"
+PasteButton.Font = Enum.Font.SourceSansBold
+PasteButton.TextSize = 12
+PasteButton.Parent = MainFrame
 
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
@@ -110,8 +71,10 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- [[ LOGIKA CORE: MULTI-FILENAME & LIST SELECTION ]]
 
+-- [[ LOGIKA REKURSIF COPY & PASTE (FOLDER & MODEL SUPPORT) ]]
+
+-- Fungsi untuk mendapatkan "Path" atau Alamat Parent agar strukturnya tidak hancur saat di-paste
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
@@ -122,7 +85,7 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. LOGIKA COPY DENGAN GENERATE NAMA RANDOM/TIMESTAMPS
+-- 1. TOMBOL COPY (Mendukung Folder, Model, dan Part di dalamnya)
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -132,18 +95,19 @@ CopyButton.MouseButton1Click:Connect(function()
     local SaveData = {}
     local count = 0
     
-    -- LOGIKA UTAMA: Membuat kode acak 4 digit + Waktu saat ini (Timestamp) agar nama file selalu beda
-    local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
-    local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
-    
+    -- Menggunakan GetDescendants() agar folder dan model di dalam folder lain ikut ter-scan
     for _, obj in pairs(TargetFolder:GetDescendants()) do
+        -- Kita hanya menyimpan Folder, Model, dan objek fisik (Part)
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
             count = count + 1
+            
             local data = {
                 Name = obj.Name,
                 ClassName = obj.ClassName,
-                RelativePath = getRelativePath(obj)
+                RelativePath = getRelativePath(obj) -- Menyimpan struktur silsilah keluarga objek
             }
+            
+            -- Jika objek adalah Part fisik, simpan properti transformasinya
             if obj:IsA("BasePart") then
                 data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
                 data.Position = {obj.Position.X, obj.Position.Y, obj.Position.Z}
@@ -152,126 +116,83 @@ CopyButton.MouseButton1Click:Connect(function()
                 data.Transparency = obj.Transparency
                 data.Anchored = obj.Anchored
             end
+            
             table.insert(SaveData, data)
         end
     end
     
-    writefile(fileName, HttpService:JSONEncode(SaveData))
-    CopyButton.Text = "💾 FILE GENERATED!"
+    writefile(FILE_NAME, HttpService:JSONEncode(SaveData))
+    CopyButton.Text = "SAVED " .. count .. " ASSETS TO PC"
     task.wait(1.5)
-    CopyButton.Text = "📦 NEW COPY (RANDOM)"
-    _G.UpdatePasteList() -- Refresh list otomatis
+    CopyButton.Text = "📦 COPY ALL + STRUCT"
 end)
 
--- 2. LOGIKA MENAMPILKAN SELURUH LIST FILE HASIL COPY DI PC
-_G.UpdatePasteList = function()
-    for _, child in pairs(ListScroll:GetChildren()) do
-        if child:IsA("TextButton") then child:Destroy() end
+-- 2. TOMBOL PASTE (Membangun ulang Folder/Model sesuai struktur asli)
+PasteButton.MouseButton1Click:Connect(function()
+    if not readfile or not isfile(FILE_NAME) then 
+        PasteButton.Text = "File Kosong / Tak Support!"; 
+        task.wait(1.5); 
+        PasteButton.Text = "📥 PASTE ALL + STRUCT"; 
+        return 
     end
     
-    if not listfiles then return end
-    local files = listfiles("")
-    local anyFile = false
+    local loadedData = HttpService:JSONDecode(readfile(FILE_NAME))
     
-    for _, file in pairs(files) do
-        if file:match(FILE_PREFIX) and file:match("%.json$") then
-            anyFile = true
-            -- Bersihkan nama path luar agar UI tetap bersih dan rapi
-            local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
-            
-            local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -5, 0, 24)
-            FileSelectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
-            FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-            FileSelectBtn.Text = "📄 " .. cleanName
-            FileSelectBtn.Font = Enum.Font.SourceSans
-            FileSelectBtn.TextSize = 11
-            FileSelectBtn.Parent = ListScroll
-            
-            FileSelectBtn.MouseButton1Click:Connect(function()
-                FileSelectBtn.Text = "⌛ PASTING..."
-                FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-                
-                local success, err = pcall(function()
-                    local fileContent = readfile(file)
-                    local loadedData = HttpService:JSONDecode(fileContent)
-                    
-                    local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName)
-                    if not MasterFolder then
-                        MasterFolder = Instance.new("Folder")
-                        MasterFolder.Name = "Paste_" .. cleanName
-                        MasterFolder.Parent = workspace
-                    end
-                    
-                    local function findOrCreateParent(relativePath)
-                        local currentParent = MasterFolder
-                        for _, pathInfo in ipairs(relativePath) do
-                            local found = currentParent:FindFirstChild(pathInfo.Name)
-                            if not found then
-                                found = Instance.new(pathInfo.ClassName)
-                                found.Name = pathInfo.Name
-                                found.Parent = currentParent
-                            end
-                            currentParent = found
-                        end
-                        return currentParent
-                    end
-                    
-                    for _, data in pairs(loadedData) do
-                        pcall(function()
-                            local targetParent = findOrCreateParent(data.RelativePath)
-                            local existingObj = targetParent:FindFirstChild(data.Name)
-                            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
-                                return
-                            end
-                            
-                            local newObj = Instance.new(data.ClassName)
-                            newObj.Name = data.Name
-                            
-                            if data.Size and newObj:IsA("BasePart") then
-                                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
-                                newObj.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
-                                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
-                                newObj.Material = Enum.Material[data.Material]
-                                newObj.Transparency = data.Transparency
-                                newObj.Anchored = data.Anchored
-                            end
-                            newObj.Parent = targetParent
-                        end)
-                    end
-                end)
-                
-                if success then
-                    FileSelectBtn.Text = "✅ DONE!"
-                    FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-                else
-                    FileSelectBtn.Text = "❌ ERROR!"
-                    FileSelectBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-                end
-                
-                task.wait(1.5)
-                FileSelectBtn.Text = "📄 " .. cleanName
-                FileSelectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
-            end)
+    -- Root folder utama untuk menampung hasil paste di game baru
+    local MasterFolder = workspace:FindFirstChild("Hasil_Paste_Struktur")
+    if not MasterFolder then
+        MasterFolder = Instance.new("Folder")
+        MasterFolder.Name = "Hasil_Paste_Struktur"
+        MasterFolder.Parent = workspace
+    end
+    
+    -- Fungsi pembantu untuk mencari atau membuat Parent (Folder/Model) secara otomatis saat rekonstruksi
+    local function findOrCreateParent(relativePath)
+        local currentParent = MasterFolder
+        for _, pathInfo in ipairs(relativePath) do
+            local found = currentParent:FindFirstChild(pathInfo.Name)
+            if not found then
+                found = Instance.new(pathInfo.ClassName)
+                found.Name = pathInfo.Name
+                found.Parent = currentParent
+            end
+            currentParent = found
         end
+        return currentParent
     end
     
-    if not anyFile then
-        local NoFileLabel = Instance.new("TextLabel")
-        NoFileLabel.Size = UDim2.new(1, 0, 0, 20)
-        NoFileLabel.BackgroundTransparency = 1
-        NoFileLabel.Text = "(Belum ada file copy)"
-        NoFileLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
-        NoFileLabel.Font = Enum.Font.SourceSansItalic
-        NoFileLabel.TextSize = 11
-        NoFileLabel.Parent = ListScroll
+    -- Mulai melakukan pemPembuatan ulang objek
+    for _, data in pairs(loadedData) do
+        pcall(function()
+            -- Cari tahu objek ini harus ditaruh di folder/model mana
+            local targetParent = findOrCreateParent(data.RelativePath)
+            
+            -- Cek apakah objek (terutama Folder/Model pembungkus) sudah dibuat oleh fungsi di atas
+            local existingObj = targetParent:FindFirstChild(data.Name)
+            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
+                -- Jika sudah ada pembungkusnya, tidak perlu dibuat double
+                return
+            end
+            
+            -- Buat objek baru
+            local newObj = Instance.new(data.ClassName)
+            newObj.Name = data.Name
+            
+            -- Jika berupa Part, isi semua data fisiknya
+            if data.Size and newObj:IsA("BasePart") then
+                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
+                newObj.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
+                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
+                newObj.Material = Enum.Material[data.Material]
+                newObj.Transparency = data.Transparency
+                newObj.Anchored = data.Anchored
+            end
+            
+            newObj.Parent = targetParent
+        end)
     end
     
-    ListScroll.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y)
-end
-
-RefreshButton.MouseButton1Click:Connect(function()
-    _G.UpdatePasteList()
+    PasteButton.Text = "STRUCTURE REBUILT!"
+    task.wait(1.5)
+    PasteButton.Text = "📥 PASTE ALL + STRUCT"
 end)
-
-_G.UpdatePasteList()
