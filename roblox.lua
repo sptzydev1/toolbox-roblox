@@ -18,7 +18,7 @@ end)
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
--- [[ CREATING GUI (Premium Curved UI V2) ]]
+-- [[ CREATING GUI (Premium Curved UI V2 - Updated to V3 Engine) ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
@@ -26,7 +26,7 @@ ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 270) -- Sedikit diperbesar untuk kenyamanan v2
+MainFrame.Size = UDim2.new(0, 230, 0, 270)
 MainFrame.Position = UDim2.new(0.5, -115, 0.5, -135)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
@@ -43,7 +43,7 @@ MainStroke.Color = Color3.fromRGB(0, 200, 255)
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 MainStroke.Parent = MainFrame
 
--- Judul GUI Kustom: COPY GAME BY SPYZYY V2
+-- Judul GUI Kustom: COPY MAP BY SPYZYY V2
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
@@ -138,7 +138,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ LOGIKA CORE ANTI-LIMIT LAYER (V2) ]]
+-- [[ LOGIKA CORE ANTI-LIMIT LAYER (V3 PERFECT MATCH) ]]
 
 local function getRelativePath(obj)
     local path = {}
@@ -150,7 +150,7 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. PROSES COPY DEEP HIERARCHY
+-- 1. PROSES COPY DEEP HIERARCHY + FIX COMPLETE DATA
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -164,25 +164,40 @@ CopyButton.MouseButton1Click:Connect(function()
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
     for _, obj in pairs(TargetFolder:GetDescendants()) do
+        -- BasePart mencakup MeshPart, UnionOperation, Wedge, Seat, dll.
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            count = count + 1
-            local relPath = getRelativePath(obj)
-            
-            local data = {
-                Name = obj.Name,
-                ClassName = obj.ClassName,
-                RelativePath = relPath,
-                Depth = #relPath -- Menghitung seberapa dalam posisi objek (PENTING untuk sorting)
-            }
-            if obj:IsA("BasePart") then
-                data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                data.Position = {obj.Position.X, obj.Position.Y, obj.Position.Z}
-                data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                data.Material = obj.Material.Name
-                data.Transparency = obj.Transparency
-                data.Anchored = obj.Anchored
+            -- Mencegah penyalinan sistem esensial internal agar tidak bug/error
+            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("LuaSourceContainer") then
+                count = count + 1
+                local relPath = getRelativePath(obj)
+                
+                local data = {
+                    Name = obj.Name,
+                    ClassName = obj.ClassName,
+                    RelativePath = relPath,
+                    Depth = #relPath
+                }
+                
+                if obj:IsA("BasePart") then
+                    data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                    
+                    -- Menggunakan komparasi Matrix CFrame penuh (Rotasi + Posisi Presisi)
+                    data.CFrame = {obj.CFrame:GetComponents()}
+                    
+                    data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
+                    data.Material = obj.Material.Name
+                    data.Transparency = obj.Transparency
+                    data.Anchored = obj.Anchored
+                    data.CanCollide = obj.CanCollide
+                    
+                    -- Ekstraksi data ID internal khusus MeshPart
+                    if obj:IsA("MeshPart") then
+                        data.MeshId = obj.MeshId
+                        data.TextureId = obj.TextureId
+                    end
+                end
+                table.insert(SaveData, data)
             end
-            table.insert(SaveData, data)
         end
     end
     
@@ -193,7 +208,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN (ANTI ERROR HIERARCHY)
+-- 2. PROSES REFRESH DAN PASTE SELEKTIF BERDASARKAN CFRAME MATRIX
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -230,8 +245,6 @@ _G.UpdatePasteList = function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
-                    -- [LOGIKA KRUSIAL V2]: Urutkan data berdasarkan Depth (kedalaman) terkecil ke terbesar.
-                    -- Ini memastikan Bapak dibuat dulu sebelum Anaknya dibuat.
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -248,7 +261,8 @@ _G.UpdatePasteList = function()
                         for _, pathInfo in ipairs(relativePath) do
                             local found = currentParent:FindFirstChild(pathInfo.Name)
                             if not found then
-                                found = Instance.new(pathInfo.ClassName)
+                                local successInst, resInst = pcall(function() return Instance.new(pathInfo.ClassName) end)
+                                found = successInst and resInst or Instance.new("Folder")
                                 found.Name = pathInfo.Name
                                 found.Parent = currentParent
                             end
@@ -261,7 +275,6 @@ _G.UpdatePasteList = function()
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
                             
-                            -- Cek duplikasi khusus Folder dan Model saja
                             local existingObj = targetParent:FindFirstChild(data.Name)
                             if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
                                 return
@@ -270,13 +283,22 @@ _G.UpdatePasteList = function()
                             local newObj = Instance.new(data.ClassName)
                             newObj.Name = data.Name
                             
-                            if data.Size and newObj:IsA("BasePart") then
+                            if data.CFrame and newObj:IsA("BasePart") then
                                 newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
-                                newObj.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
+                                
+                                -- Pengaplikasian koordinat CFrame Matrix secara utuh (Posisi + Rotasi Mutlak)
+                                newObj.CFrame = CFrame.new(unpack(data.CFrame))
+                                
                                 newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
                                 newObj.Material = Enum.Material[data.Material]
                                 newObj.Transparency = data.Transparency
                                 newObj.Anchored = data.Anchored
+                                newObj.CanCollide = data.CanCollide
+                                
+                                if data.MeshId and newObj:IsA("MeshPart") then
+                                    newObj.MeshId = data.MeshId
+                                    newObj.TextureId = data.TextureId
+                                end
                             end
                             newObj.Parent = targetParent
                         end)
