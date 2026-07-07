@@ -189,7 +189,7 @@ CopyButton.MouseButton1Click:Connect(function()
     writefile(fileName, HttpService:JSONEncode(SaveData))
     CopyButton.Text = "💾 COPIED: " .. count
     task.wait(1.5)
-    CopyButton.Text = "COPY OM"
+    CopyButton.Text = "COPYY OM"
     _G.UpdatePasteList()
 end)
 
