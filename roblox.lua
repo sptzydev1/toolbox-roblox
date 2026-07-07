@@ -25,15 +25,15 @@ local IsMultiSelecting = false
 local HighlightStorage = {} 
 local LastHoveredObject = nil 
 
--- [[ CREATING GUI (Premium Curved UI V5 - Full Complete Features) ]]
+-- [[ CREATING GUI (Premium Curved UI V5 - Fixed Font Error) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyCopyGuiV5_Final"
+ScreenGui.Name = "SpyzyyCopyGuiV5_Fixed"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 260, 0, 430) -- Disesuaikan agar penataan grid 1,2,3 rapi
+MainFrame.Size = UDim2.new(0, 260, 0, 430)
 MainFrame.Position = UDim2.new(0.5, -130, 0.5, -215)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 MainFrame.BorderSizePixel = 0
@@ -54,7 +54,7 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 COPY MAP BY SPYZYY V5 FULL 🚀"
+Title.Text = "🚀 COPY MAP BY SPYZYY V5 FIXED 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 13
@@ -90,7 +90,7 @@ local MultiCorner = Instance.new("UICorner")
 MultiCorner.CornerRadius = UDim.new(0, 6)
 MultiCorner.Parent = MultiSelectButton
 
--- Label Penanda Grid Preview Gambar
+-- Label Penanda Grid Preview Gambar (FIXED FONT)
 local GridLabel = Instance.new("TextLabel")
 GridLabel.Size = UDim2.new(1, -24, 0, 20)
 GridLabel.Position = UDim2.new(0, 12, 0, 110)
@@ -98,7 +98,7 @@ GridLabel.BackgroundTransparency = 1
 GridLabel.Text = "Hasil Scan Objek (Grid 1,2,3 / 4,5,6):"
 GridLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 GridLabel.TextXAlignment = Enum.TextXAlignment.Left
-GridLabel.Font = Enum.Font.SourceSansGridBold
+GridLabel.Font = Enum.Font.SourceSansBold -- DIBAIKI DISINI (Dari SourceSansGridBold -> SourceSansBold)
 GridLabel.TextSize = 11
 GridLabel.Parent = MainFrame
 
@@ -299,18 +299,15 @@ local function updateImageGrid()
         BoxCorner.CornerRadius = UDim.new(0, 6)
         BoxCorner.Parent = ItemBox
         
-        -- VIEWPORT FRAME (Kamera Mini 3D Renderer)
         local Viewport = Instance.new("ViewportFrame")
         Viewport.Size = UDim2.new(1, -4, 1, -4)
         Viewport.Position = UDim2.new(0, 2, 0, 2)
         Viewport.BackgroundTransparency = 1
-        -- Menyalakan Sistem Studio Light Agar Decal/Texture Terlihat Jelas
         Viewport.Ambient = Color3.fromRGB(220, 220, 220)
         Viewport.LightColor = Color3.fromRGB(255, 255, 255)
         Viewport.LightDirection = Vector3.new(-1, -1, -1)
         Viewport.Parent = ItemBox
         
-        -- Mengkloning objek (Aset Decal/Texture/SurfaceAppearance otomatis ikut tersalin)
         local clonedObj = obj:Clone()
         if clonedObj:IsA("BasePart") then
             clonedObj.Position = Vector3.new(0, 0, 0)
@@ -320,7 +317,6 @@ local function updateImageGrid()
             clonedObj.Parent = Viewport
         end
         
-        -- Kalibrasi Sudut Pandang Kamera Otomatis
         local cam = Instance.new("Camera")
         cam.FieldOfView = 45
         Viewport.CurrentCamera = cam
@@ -334,7 +330,6 @@ local function updateImageGrid()
             cam.CFrame = CFrame.new(Vector3.new(maxDim, maxDim + 1, maxDim + 3), Vector3.new(0, 0, 0))
         end
         
-        -- Label Penomoran Format Susunan Grid (1, 2, 3...)
         local NumLabel = Instance.new("TextLabel")
         NumLabel.Size = UDim2.new(0, 16, 0, 16)
         NumLabel.Position = UDim2.new(0, 2, 0, 2)
@@ -359,7 +354,6 @@ end
 local function getTopLevelModelOrPart(target)
     if not target or target == workspace then return nil end
     local current = target
-    -- Memanjat struktur folder/model lapis demi lapis untuk mencari pembungkus terluarnya yang aman
     while current.Parent and current.Parent ~= workspace and current.Parent ~= game do
         local pName = current.Parent.Name:lower()
         if pName:match("map") or pName:match("world") or pName:match("stage") then break end
@@ -396,7 +390,6 @@ Mouse.Move:Connect(function()
     if target and not target:IsDescendantOf(ScreenGui) then
         local finalTarget = getTopLevelModelOrPart(target) or target
         
-        -- Mencegah spam pembacaan konstan pada satu objek yang sama saat mouse bergerak
         if finalTarget ~= LastHoveredObject then
             LastHoveredObject = finalTarget
             
