@@ -1,48 +1,62 @@
--- Delta Executor Optimized & Fixed UI Display Version
+-- [[ CONFIGURASI & VARIABLE UTAMA ]]
 local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local fileName = "sptzyy_game_data.json"
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Deteksi Parent GUI yang aman untuk Delta
-local TargetParent = nil
-if gethui then
-    TargetParent = gethui()
-elseif LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") then
-    TargetParent = LocalPlayer.PlayerGui
-else
-    TargetParent = game:GetService("CoreGui")
-end
+-- Nama file penyimpanan di PC kamu (akan ada di folder workspace executor-mu)
+local FILE_NAME = "CrossGameClipboard.json" 
 
--- Hapus GUI lama agar tidak menumpuk
-local oldGui = TargetParent:FindFirstChild("SptzyyCopyGui")
-if oldGui then oldGui:Destroy() end
+-- Target folder yang mau dicopy (Default: seluruh Workspace)
+local TargetFolder = workspace
 
--- --- UI CONSTRUCTION ---
+-- [[ CREATING GUI (Persegi Empat Kecil) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SptzyyCopyGui"
-ScreenGui.Parent = TargetParent
+ScreenGui.Name = "CrossGameGui"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
--- Diposisikan tepat di tengah layar agar langsung terlihat
-MainFrame.Position = UDim2.new(0.5, -130, 0.4, -130)
-MainFrame.Size = UDim2.new(0, 260, 0, 260)
+MainFrame.Size = UDim2.new(0, 160, 0, 80)
+MainFrame.Position = UDim2.new(0.5, -80, 0.5, -40)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
 MainFrame.Active = true
-MainFrame.Draggable = true -- Fallback otomatis untuk beberapa versi executor
+MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout.Parent = MainFrame
 
--- Logika Geser Manual (Sangat lancar di Mobile/Touch)
+local CopyButton = Instance.new("TextButton")
+CopyButton.Size = UDim2.new(0, 140, 0, 30)
+CopyButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyButton.Text = "👉 COPY ALL (FILE)"
+CopyButton.Font = Enum.Font.SourceSansBold
+CopyButton.TextSize = 13
+CopyButton.Parent = MainFrame
+
+local PasteButton = Instance.new("TextButton")
+PasteButton.Size = UDim2.new(0, 140, 0, 30)
+PasteButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+PasteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PasteButton.Text = "📥 PASTE ALL (FILE)"
+PasteButton.Font = Enum.Font.SourceSansBold
+PasteButton.TextSize = 13
+PasteButton.Parent = MainFrame
+
+-- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -54,160 +68,95 @@ MainFrame.InputBegan:Connect(function(input)
     end
 end)
 MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then update(input) end
 end)
 
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.GothamBold
-Title.Text = "Sptzyy Copy Game"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = MainFrame
-CloseBtn.Position = UDim2.new(1, -35, 0, 8)
-CloseBtn.Size = UDim2.new(0, 25, 0, 25)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 12
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 5)
+-- [[ LOGIKA CROSS-GAME BERBASIS FILE SYSTEM ]]
 
-local function createButton(name, pos, text, color)
-    local btn = Instance.new("TextButton")
-    btn.Name = name
-    btn.Parent = MainFrame
-    btn.Position = pos
-    btn.Size = UDim2.new(0, 220, 0, 45)
-    btn.BackgroundColor3 = color
-    btn.Font = Enum.Font.GothamSemibold
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 13
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    return btn
-end
+-- 1. Fungsi untuk Mengubah Objek menjadi Data Teks (JSON)
+CopyButton.MouseButton1Click:Connect(function()
+    if not writefile then 
+        CopyButton.Text = "Executor Tak Support!"
+        return 
+    end
 
-local CopyBtn = createButton("CopyBtn", UDim2.new(0, 20, 0, 60), "COPY ALL PARTS", Color3.fromRGB(56, 142, 60))
-local PasteBtn = createButton("PasteBtn", UDim2.new(0, 20, 0, 120), "PASTE TO WORKSPACE", Color3.fromRGB(21, 101, 192))
-
-local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, 0, 0, 30)
-StatusLabel.Position = UDim2.new(0, 0, 0, 200)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Ready to Copy"
-StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLabel.TextSize = 12
-
--- --- LOGIKA UTAMA ---
-
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
-CopyBtn.MouseButton1Click:Connect(function()
-    StatusLabel.Text = "Scanning Workspace..."
-    task.wait(0.1)
+    local SaveData = {}
+    local count = 0
     
-    local mapData = {}
-    local descendants = game.Workspace:GetDescendants()
-    local total = #descendants
-    local character = LocalPlayer.Character
-    
-    for i, obj in ipairs(descendants) do
-        if i % 400 == 0 then
-            StatusLabel.Text = "Scanning: " .. math.floor((i / total) * 100) .. "%"
-            task.wait()
-        end
-        
-        if obj:IsA("BasePart") and not obj:IsA("Terrain") then
-            if not character or not obj:IsDescendantOf(character) then
-                local cfComponents = {obj.CFrame:GetComponents()}
-                table.insert(mapData, {
-                    CN = obj.ClassName,
-                    NM = obj.Name,
-                    SZ = {obj.Size.X, obj.Size.Y, obj.Size.Z},
-                    CF = cfComponents,
-                    CL = {obj.Color.r, obj.Color.g, obj.Color.b},
-                    MT = obj.Material.Name,
-                    TR = obj.Transparency,
-                    CC = obj.CanCollide,
-                    AN = obj.Anchored
-                })
-            end
+    for _, obj in pairs(TargetFolder:GetChildren()) do
+        -- Batasi hanya Part biasa untuk kestabilan data JSON
+        if obj:IsA("Part") or obj:IsA("WedgePart") or obj:IsA("CornerWedgePart") then
+            count = count + 1
+            table.insert(SaveData, {
+                Name = obj.Name,
+                ClassName = obj.ClassName,
+                Size = {obj.Size.X, obj.Size.Y, obj.Size.Z},
+                Position = {obj.Position.X, obj.Position.Y, obj.Position.Z},
+                Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255},
+                Material = obj.Material.Name,
+                Transparency = obj.Transparency,
+                Anchored = obj.Anchored
+            })
         end
     end
     
-    StatusLabel.Text = "Saving file..."
-    task.wait(0.1)
+    -- Mengubah tabel Lua menjadi string teks JSON
+    local jsonString = HttpService:JSONEncode(SaveData)
     
-    local success, err = pcall(function()
-        writefile(fileName, HttpService:JSONEncode(mapData))
-    end)
+    -- Menyimpan teks ke dalam file di PC kamu
+    writefile(FILE_NAME, jsonString)
     
-    if success then
-        StatusLabel.Text = "Saved: " .. #mapData .. " Parts!"
-    else
-        StatusLabel.Text = "Save Failed!"
-        warn("Error saving file: ", err)
-    end
+    CopyButton.Text = "SAVED " .. count .. " OBJEK TO PC"
+    task.wait(1.5)
+    CopyButton.Text = "👉 COPY ALL (FILE)"
 end)
 
-PasteBtn.MouseButton1Click:Connect(function()
-    if not isfile or not isfile(fileName) then 
-        StatusLabel.Text = "No Save Found!" 
+-- 2. Fungsi untuk Membaca File dan Memunculkan Objek di Game Lain
+PasteButton.MouseButton1Click:Connect(function()
+    if not readfile then 
+        PasteButton.Text = "Executor Tak Support!"
         return 
     end
     
-    StatusLabel.Text = "Reading Data..."
-    task.wait(0.1)
-    
-    local success, data = pcall(function()
-        return HttpService:JSONDecode(readfile(fileName))
-    end)
-    
-    if not success or not data then
-        StatusLabel.Text = "Failed to load data!"
+    -- Mengecek apakah file hasil copy dari game 1 ada
+    if not isfile(FILE_NAME) then
+        PasteButton.Text = "File Copy Kosong!"
+        task.wait(1.5)
+        PasteButton.Text = "📥 PASTE ALL (FILE)"
         return
     end
     
-    StatusLabel.Text = "Pasting... Please Wait"
-    task.wait(0.1)
+    -- Membaca data teks dari file PC
+    local fileContent = readfile(FILE_NAME)
+    local loadedData = HttpService:JSONDecode(fileContent)
     
-    local folder = Instance.new("Folder", game.Workspace)
-    folder.Name = "sptzyy_Imported_" .. math.floor(tick())
+    local PastedFolder = Instance.new("Folder")
+    PastedFolder.Name = "Hasil_Paste_GameLain"
+    PastedFolder.Parent = workspace
     
-    local totalParts = #data
-    for i, d in ipairs(data) do
-        if i % 200 == 0 then
-            StatusLabel.Text = "Pasting: " .. math.floor((i / totalParts) * 100) .. "%"
-            task.wait()
-        end
-        
+    -- Rekonstruksi/Membuat ulang objek di game baru
+    for _, data in pairs(loadedData) do
         pcall(function()
-            local p = Instance.new(d.CN)
-            p.Name = d.NM
-            p.Size = Vector3.new(d.SZ[1], d.SZ[2], d.SZ[3])
-            p.CFrame = CFrame.new(table.unpack(d.CF))
-            p.Color = Color3.new(d.CL[1], d.CL[2], d.CL[3])
-            p.Material = Enum.Material[d.MT] or Enum.Material.Plastic
-            p.Transparency = d.TR
-            p.CanCollide = d.CC
-            p.Anchored = d.AN
-            p.Parent = folder
+            local newPart = Instance.new(data.ClassName)
+            newPart.Name = data.Name
+            newPart.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
+            
+            -- Memunculkan tepat di koordinat saat di-copy
+            newPart.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
+            newPart.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
+            newPart.Material = Enum.Material[data.Material]
+            newPart.Transparency = data.Transparency
+            newPart.Anchored = data.Anchored
+            
+            newPart.Parent = PastedFolder
         end)
     end
     
-    StatusLabel.Text = "Successfully Pasted!"
+    PasteButton.Text = "SUCCESS LOADED FROM PC!"
+    task.wait(1.5)
+    PasteButton.Text = "📥 PASTE ALL (FILE)"
 end)
