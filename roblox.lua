@@ -11,108 +11,81 @@ local GameName = "Unknown_Game"
 pcall(function()
     local productInfo = MarketplaceService:GetProductInfo(game.PlaceId)
     if productInfo and productInfo.Name then
-        GameName = productInfo.Name:gsub("[%s%p]", "_")
+        GameName = productInfo.Name:gsub("[%s%p]", "_") -- Bersihkan simbol/spasi
     end
 end)
 
 local FILE_PREFIX = "GameCopy_"
-local TargetFolder = workspace
+local TargetFolder = workspace -- Meng-scan seluruh Workspace
 
--- [[ CREATING GUI (Premium Curved UI V2) ]]
+-- [[ CREATING GUI (Persegi Empat dengan List Menu) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyCopyGuiV2"
+ScreenGui.Name = "MultiGameListGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 270) -- Sedikit diperbesar untuk kenyamanan v2
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -135)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.BorderSizePixel = 0
+MainFrame.Size = UDim2.new(0, 180, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -90, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Thickness = 2
-MainStroke.Color = Color3.fromRGB(0, 200, 255)
-MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-MainStroke.Parent = MainFrame
-
--- Judul GUI Kustom: COPY GAME BY SPYZYY V2
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Size = UDim2.new(1, 0, 0, 25)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 COPY GAME BY SPYZYY V2 🚀"
+Title.Text = "🎮 MULTI-COPY CHANGER"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 15
+Title.TextSize = 13
 Title.Parent = MainFrame
 
--- Tombol Copy
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 45)
-CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
+CopyButton.Size = UDim2.new(0, 160, 0, 30)
+CopyButton.Position = UDim2.new(0, 10, 0, 30)
+CopyButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "📦 DEEP COPY (ALL LAYER)"
+CopyButton.Text = "📦 NEW COPY (RANDOM)"
 CopyButton.Font = Enum.Font.SourceSansBold
 CopyButton.TextSize = 12
 CopyButton.Parent = MainFrame
 
-local CopyButtonCorner = Instance.new("UICorner")
-CopyButtonCorner.CornerRadius = UDim.new(0, 6)
-CopyButtonCorner.Parent = CopyButton
-
--- Label Penanda List
 local ListLabel = Instance.new("TextLabel")
-ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 90)
+ListLabel.Size = UDim2.new(1, -20, 0, 20)
+ListLabel.Position = UDim2.new(0, 10, 0, 65)
 ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 ListLabel.TextXAlignment = Enum.TextXAlignment.Left
-ListLabel.Font = Enum.Font.SourceSansSemibold
-ListLabel.TextSize = 12
+ListLabel.Font = Enum.Font.SourceSans
+ListLabel.TextSize = 11
 ListLabel.Parent = MainFrame
 
--- Scrolling Frame
 local ListScroll = Instance.new("ScrollingFrame")
-ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 110)
-ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
+ListScroll.Size = UDim2.new(0, 160, 0, 110)
+ListScroll.Position = UDim2.new(0, 10, 0, 85)
+ListScroll.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 ListScroll.ScrollBarThickness = 4
 ListScroll.Parent = MainFrame
 
-local ListScrollCorner = Instance.new("UICorner")
-ListScrollCorner.CornerRadius = UDim.new(0, 6)
-ListScrollCorner.Parent = ListScroll
-
 local ListLayout = Instance.new("UIListLayout")
-ListLayout.Padding = UDim.new(0, 4)
+ListLayout.Padding = UDim.new(0, 3)
 ListLayout.Parent = ListScroll
 
--- Tombol Refresh List
 local RefreshButton = Instance.new("TextButton")
-RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 235)
-RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+RefreshButton.Size = UDim2.new(0, 160, 0, 15)
+RefreshButton.Position = UDim2.new(0, 10, 0, 200)
+RefreshButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-RefreshButton.Text = "🔄 Refresh List File"
+RefreshButton.Text = "🔄 Refresh List"
 RefreshButton.Font = Enum.Font.SourceSans
-RefreshButton.TextSize = 11
+RefreshButton.TextSize = 10
 RefreshButton.Parent = MainFrame
-
-local RefreshCorner = Instance.new("UICorner")
-RefreshCorner.CornerRadius = UDim.new(0, 4)
-RefreshCorner.Parent = RefreshButton
-
 
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
@@ -137,8 +110,7 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
-
--- [[ LOGIKA CORE ANTI-LIMIT LAYER (V2) ]]
+-- [[ LOGIKA CORE: MULTI-FILENAME & LIST SELECTION ]]
 
 local function getRelativePath(obj)
     local path = {}
@@ -150,7 +122,7 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. PROSES COPY DEEP HIERARCHY
+-- 1. LOGIKA COPY DENGAN GENERATE NAMA RANDOM/TIMESTAMPS
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -160,19 +132,17 @@ CopyButton.MouseButton1Click:Connect(function()
     local SaveData = {}
     local count = 0
     
+    -- LOGIKA UTAMA: Membuat kode acak 4 digit + Waktu saat ini (Timestamp) agar nama file selalu beda
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
     for _, obj in pairs(TargetFolder:GetDescendants()) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
             count = count + 1
-            local relPath = getRelativePath(obj)
-            
             local data = {
                 Name = obj.Name,
                 ClassName = obj.ClassName,
-                RelativePath = relPath,
-                Depth = #relPath -- Menghitung seberapa dalam posisi objek (PENTING untuk sorting)
+                RelativePath = getRelativePath(obj)
             }
             if obj:IsA("BasePart") then
                 data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
@@ -187,13 +157,13 @@ CopyButton.MouseButton1Click:Connect(function()
     end
     
     writefile(fileName, HttpService:JSONEncode(SaveData))
-    CopyButton.Text = "💾 COPIED LAYER: " .. count
+    CopyButton.Text = "💾 FILE GENERATED!"
     task.wait(1.5)
-    CopyButton.Text = "📦 DEEP COPY (ALL LAYER)"
-    _G.UpdatePasteList()
+    CopyButton.Text = "📦 NEW COPY (RANDOM)"
+    _G.UpdatePasteList() -- Refresh list otomatis
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN (ANTI ERROR HIERARCHY)
+-- 2. LOGIKA MENAMPILKAN SELURUH LIST FILE HASIL COPY DI PC
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -206,35 +176,25 @@ _G.UpdatePasteList = function()
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
             anyFile = true
+            -- Bersihkan nama path luar agar UI tetap bersih dan rapi
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
             local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -6, 0, 26)
-            FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+            FileSelectBtn.Size = UDim2.new(1, -5, 0, 24)
+            FileSelectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-            FileSelectBtn.Text = " 📄 " .. cleanName
-            FileSelectBtn.Font = Enum.Font.SourceSansSemibold
+            FileSelectBtn.Text = "📄 " .. cleanName
+            FileSelectBtn.Font = Enum.Font.SourceSans
             FileSelectBtn.TextSize = 11
-            FileSelectBtn.TextXAlignment = Enum.TextXAlignment.Left
             FileSelectBtn.Parent = ListScroll
             
-            local BtnCorner = Instance.new("UICorner")
-            BtnCorner.CornerRadius = UDim.new(0, 4)
-            BtnCorner.Parent = FileSelectBtn
-            
             FileSelectBtn.MouseButton1Click:Connect(function()
-                FileSelectBtn.Text = " ⌛ LOADING LAYERS..."
+                FileSelectBtn.Text = "⌛ PASTING..."
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
                 local success, err = pcall(function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
-                    
-                    -- [LOGIKA KRUSIAL V2]: Urutkan data berdasarkan Depth (kedalaman) terkecil ke terbesar.
-                    -- Ini memastikan Bapak dibuat dulu sebelum Anaknya dibuat.
-                    table.sort(loadedData, function(a, b)
-                        return (a.Depth or 0) < (b.Depth or 0)
-                    end)
                     
                     local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName)
                     if not MasterFolder then
@@ -260,8 +220,6 @@ _G.UpdatePasteList = function()
                     for _, data in pairs(loadedData) do
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
-                            
-                            -- Cek duplikasi khusus Folder dan Model saja
                             local existingObj = targetParent:FindFirstChild(data.Name)
                             if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
                                 return
@@ -284,29 +242,28 @@ _G.UpdatePasteList = function()
                 end)
                 
                 if success then
-                    FileSelectBtn.Text = " ✅ V2 PASTE DONE!"
+                    FileSelectBtn.Text = "✅ DONE!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
                 else
-                    FileSelectBtn.Text = " ❌ ERROR LAYER!"
+                    FileSelectBtn.Text = "❌ ERROR!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-                    warn(err)
                 end
                 
                 task.wait(1.5)
-                FileSelectBtn.Text = " 📄 " .. cleanName
-                FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+                FileSelectBtn.Text = "📄 " .. cleanName
+                FileSelectBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
             end)
         end
     end
     
     if not anyFile then
         local NoFileLabel = Instance.new("TextLabel")
-        NoFileLabel.Size = UDim2.new(1, 0, 0, 30)
+        NoFileLabel.Size = UDim2.new(1, 0, 0, 20)
         NoFileLabel.BackgroundTransparency = 1
         NoFileLabel.Text = "(Belum ada file copy)"
         NoFileLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
         NoFileLabel.Font = Enum.Font.SourceSansItalic
-        NoFileLabel.TextSize = 12
+        NoFileLabel.TextSize = 11
         NoFileLabel.Parent = ListScroll
     end
     
