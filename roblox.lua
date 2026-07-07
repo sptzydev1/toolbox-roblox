@@ -59,9 +59,9 @@ CopyButton.Size = UDim2.new(0, 206, 0, 35)
 CopyButton.Position = UDim2.new(0, 12, 0, 45)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "COPYY OM"
+CopyButton.Text = "COPYY OM (SCAN JARAK JAUH)"
 CopyButton.Font = Enum.Font.SourceSansBold
-CopyButton.TextSize = 12
+CopyButton.TextSize = 11
 CopyButton.Parent = MainFrame
 
 local CopyButtonCorner = Instance.new("UICorner")
@@ -156,21 +156,6 @@ local function isAPlayerCharacter(obj)
             return true
         end
     end
-    
-    if obj:IsA("Model") or obj:IsA("BasePart") then
-        local rootPart = obj:IsA("Model") and obj.PrimaryPart or (obj:IsA("BasePart") and obj or nil)
-        if rootPart then
-            for _, p in pairs(Players:GetPlayers()) do
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local pRoot = p.Character.HumanoidRootPart
-                    local distance = (rootPart.Position - pRoot.Position).Magnitude
-                    if distance < 6 and rootPart.Anchored == false then
-                        return true
-                    end
-                end
-            end
-        end
-    end
     return false
 end
 
@@ -181,7 +166,7 @@ local AllowedSupportClasses = {
     ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true
 }
 
--- 1. PROSES COPY DENGAN PROPERTI PENUH & POSISI ASLI
+-- 1. PROSES COPY DENGAN TELEPORT RADIUS UNTUK MEMAKSA STREAMING-IN
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -189,80 +174,118 @@ CopyButton.MouseButton1Click:Connect(function()
     end
 
     local SaveData = {}
+    local Registry = {} -- Mencegah duplikasi data saat melakukan perpindahan posisi scan
     local count = 0
     
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    local objectsToScan = TargetFolder:GetDescendants()
+    -- Ambil koordinat batas map secara kasar dari part yang ada saat ini
+    local scanPoints = {}
+    for _, obj in pairs(TargetFolder:GetChildren()) do
+        if obj:IsA("BasePart") then
+            table.insert(scanPoints, obj.Position)
+        elseif obj:IsA("Model") and obj.PrimaryPart then
+            table.insert(scanPoints, obj.PrimaryPart.Position)
+        end
+    end
     
-    for _, obj in pairs(objectsToScan) do
-        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
-            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
-                count = count + 1
-                
-                CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
-                
-                local relPath = getRelativePath(obj)
-                local data = {
-                    Name = obj.Name,
-                    ClassName = obj.ClassName,
-                    RelativePath = relPath,
-                    Depth = #relPath,
-                    Properties = {}
-                }
-                
-                if obj:IsA("BasePart") then
-                    data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                    data.Properties.CFrame = {obj.CFrame:GetComponents()}
-                    data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                    data.Properties.Material = obj.Material.Name
-                    data.Properties.Transparency = obj.Transparency
-                    data.Properties.Reflectance = obj.Reflectance
-                    data.Properties.Anchored = obj.Anchored
-                    data.Properties.CanCollide = obj.CanCollide
-                    data.Properties.CanTouch = obj.CanTouch
-                    data.Properties.CastShadow = obj.CastShadow
-                    
-                    if obj:IsA("MeshPart") then
-                        pcall(function() data.Properties.MeshId = obj.MeshId end)
-                        pcall(function() data.Properties.TextureId = obj.TextureId end)
-                    elseif obj:IsA("UnionOperation") then
-                        pcall(function() data.Properties.AssetId = obj.AssetId end)
-                    end
-                
-                elseif obj:IsA("Model") then
-                    pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
-
-                elseif AllowedSupportClasses[obj.ClassName] then
-                    pcall(function() data.Properties.Texture = obj.Texture end)
-                    pcall(function() data.Properties.TextureId = obj.TextureId end)
-                    pcall(function() data.Properties.MeshId = obj.MeshId end)
-                    pcall(function() data.Properties.MeshType = obj.MeshType.Name end)
-                    pcall(function() data.Properties.Face = obj.Face.Name end)
-                    pcall(function() data.Properties.Transparency = obj.Transparency end)
-                    
-                    pcall(function() data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end)
-                    pcall(function() data.Properties.StudsPerTileU = obj.StudsPerTileU end)
-                    pcall(function() data.Properties.StudsPerTileV = obj.StudsPerTileV end)
-                    pcall(function() data.Properties.OffsetStudsU = obj.OffsetStudsU end)
-                    pcall(function() data.Properties.OffsetStudsV = obj.OffsetStudsV end)
-                    
-                    pcall(function() data.Properties.Brightness = obj.Brightness end)
-                    pcall(function() data.Properties.Range = obj.Range end)
-                    pcall(function() data.Properties.Shadows = obj.Shadows end)
-                    pcall(function() data.Properties.Angle = obj.Angle end)
-                    pcall(function() data.Properties.Enabled = obj.Enabled end)
-                    
-                    pcall(function() data.Properties.Rate = obj.Rate end)
-                    pcall(function() data.Properties.Speed = {obj.Speed.Min, obj.Speed.Max} end)
-                    pcall(function() data.Properties.Lifetime = {obj.Lifetime.Min, obj.Lifetime.Max} end)
-                end
-                
-                table.insert(SaveData, data)
-                if count % 250 == 0 then task.wait() end
+    -- Jika map kosong/tidak terdeteksi, gunakan posisi standar sekeliling area asal
+    if #scanPoints == 0 then
+        for x = -2000, 2000, 1000 do
+            for z = -2000, 2000, 1000 do
+                table.insert(scanPoints, Vector3.new(x, 100, z))
             end
         end
+    end
+
+    local originalCF = LocalPlayer.Character and LocalPlayer.Character:GetPivot()
+    
+    -- Loop penjelajahan titik koordinat (Memaksa bypass StreamingEnabled)
+    for index, point in ipairs(scanPoints) do
+        CopyButton.Text = "🗺️ Scanning Area " .. index .. "/" .. #scanPoints
+        
+        -- Teleportasikan karakter secara local untuk mendatangkan data chunks
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character:PivotTo(CFrame.new(point + Vector3.new(0, 50, 0)))
+            task.wait(0.5) -- Beri waktu jeda agar engine game sempat mengunduh aset sekitar
+        end
+
+        local objectsToScan = TargetFolder:GetDescendants()
+        for _, obj in pairs(objectsToScan) do
+            if not Registry[obj] and (obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName]) then
+                if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
+                    
+                    Registry[obj] = true
+                    count = count + 1
+                    CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+                    
+                    local relPath = getRelativePath(obj)
+                    local data = {
+                        Name = obj.Name,
+                        ClassName = obj.ClassName,
+                        RelativePath = relPath,
+                        Depth = #relPath,
+                        Properties = {}
+                    }
+                    
+                    if obj:IsA("BasePart") then
+                        data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                        data.Properties.CFrame = {obj.CFrame:GetComponents()}
+                        data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
+                        data.Properties.Material = obj.Material.Name
+                        data.Properties.Transparency = obj.Transparency
+                        data.Properties.Reflectance = obj.Reflectance
+                        data.Properties.Anchored = obj.Anchored
+                        data.Properties.CanCollide = obj.CanCollide
+                        data.Properties.CanTouch = obj.CanTouch
+                        data.Properties.CastShadow = obj.CastShadow
+                        
+                        if obj:IsA("MeshPart") then
+                            pcall(function() data.Properties.MeshId = obj.MeshId end)
+                            pcall(function() data.Properties.TextureId = obj.TextureId end)
+                        elseif obj:IsA("UnionOperation") then
+                            pcall(function() data.Properties.AssetId = obj.AssetId end)
+                        end
+                    
+                    elseif obj:IsA("Model") then
+                        pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
+
+                    elseif AllowedSupportClasses[obj.ClassName] then
+                        pcall(function() data.Properties.Texture = obj.Texture end)
+                        pcall(function() data.Properties.TextureId = obj.TextureId end)
+                        pcall(function() data.Properties.MeshId = obj.MeshId end)
+                        pcall(function() data.Properties.MeshType = obj.MeshType.Name end)
+                        pcall(function() data.Properties.Face = obj.Face.Name end)
+                        pcall(function() data.Properties.Transparency = obj.Transparency end)
+                        
+                        pcall(function() data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end)
+                        pcall(function() data.Properties.StudsPerTileU = obj.StudsPerTileU end)
+                        pcall(function() data.Properties.StudsPerTileV = obj.StudsPerTileV end)
+                        pcall(function() data.Properties.OffsetStudsU = obj.OffsetStudsU end)
+                        pcall(function() data.Properties.OffsetStudsV = obj.OffsetStudsV end)
+                        
+                        pcall(function() data.Properties.Brightness = obj.Brightness end)
+                        pcall(function() data.Properties.Range = obj.Range end)
+                        pcall(function() data.Properties.Shadows = obj.Shadows end)
+                        pcall(function() data.Properties.Angle = obj.Angle end)
+                        pcall(function() data.Properties.Enabled = obj.Enabled end)
+                        
+                        pcall(function() data.Properties.Rate = obj.Rate end)
+                        pcall(function() data.Properties.Speed = {obj.Speed.Min, obj.Speed.Max} end)
+                        pcall(function() data.Properties.Lifetime = {obj.Lifetime.Min, obj.Lifetime.Max} end)
+                    end
+                    
+                    table.insert(SaveData, data)
+                    if count % 350 == 0 then task.wait() end
+                end
+            end
+        end
+    end
+    
+    -- Kembalikan karakter ke posisi awal setelah selesai menyalin seluruh region
+    if originalCF and LocalPlayer.Character then
+        LocalPlayer.Character:PivotTo(originalCF)
     end
     
     writefile(fileName, HttpService:JSONEncode(SaveData))
@@ -272,7 +295,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN (DENGAN CORE CONTAINER UNTUK ICON DELETE)
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
@@ -287,15 +310,13 @@ _G.UpdatePasteList = function()
             anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
-            -- Container Frame untuk memisahkan Tombol Pilih dan Tombol Delete
             local ItemFrame = Instance.new("Frame")
             ItemFrame.Size = UDim2.new(1, -6, 0, 26)
             ItemFrame.BackgroundTransparency = 1
             ItemFrame.Parent = ListScroll
             
-            -- Tombol Utama (Pilih / Paste File)
             local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -26, 1, 0) -- Beri space di kanan untuk tombol delete
+            FileSelectBtn.Size = UDim2.new(1, -26, 1, 0)
             FileSelectBtn.Position = UDim2.new(0, 0, 0, 0)
             FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
@@ -309,7 +330,6 @@ _G.UpdatePasteList = function()
             BtnCorner.CornerRadius = UDim.new(0, 4)
             BtnCorner.Parent = FileSelectBtn
             
-            -- Tombol Delete (❌) di Sudut Kanan Bersebelahan dengan FileSelectBtn
             local DeleteBtn = Instance.new("TextButton")
             DeleteBtn.Size = UDim2.new(0, 22, 1, 0)
             DeleteBtn.Position = UDim2.new(1, -22, 0, 0)
@@ -324,12 +344,9 @@ _G.UpdatePasteList = function()
             DelCorner.CornerRadius = UDim.new(0, 4)
             DelCorner.Parent = DeleteBtn
 
-            -- Logika Hapus File Saat Tombol Delete diklik
             DeleteBtn.MouseButton1Click:Connect(function()
                 if delfile then
-                    pcall(function()
-                        delfile(file)
-                    end)
+                    pcall(function() delfile(file) end)
                     ItemFrame:Destroy()
                     task.wait(0.1)
                     _G.UpdatePasteList()
@@ -338,7 +355,6 @@ _G.UpdatePasteList = function()
                 end
             end)
             
-            -- Logika Paste Saat Tombol File Diklik
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
@@ -429,8 +445,6 @@ _G.UpdatePasteList = function()
                             end
                             
                             newObj.Name = data.Name
-                            
-                            -- FIX: Set Parent dulu agar hierarki terbentuk sebelum kalkulasi CFrame global/World position dimulai
                             newObj.Parent = targetParent 
                             
                             if newObj:IsA("BasePart") and props.CFrame then
