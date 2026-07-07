@@ -430,9 +430,14 @@ _G.UpdatePasteList = function()
                             
                             newObj.Name = data.Name
                             
+                            -- FIX: Set Parent dulu agar hierarki terbentuk sebelum kalkulasi CFrame global/World position dimulai
+                            newObj.Parent = targetParent 
+                            
                             if newObj:IsA("BasePart") and props.CFrame then
                                 newObj.Size = Vector3.new(props.Size[1], props.Size[2], props.Size[3])
-                                newObj.CFrame = CFrame.new(unpack(props.CFrame))
+                                pcall(function()
+                                    newObj.CFrame = CFrame.new(unpack(props.CFrame))
+                                end)
                                 newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3])
                                 pcall(function() newObj.Material = Enum.Material[props.Material] end)
                                 newObj.Transparency = props.Transparency
@@ -447,7 +452,6 @@ _G.UpdatePasteList = function()
                                 pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
                             end
                             
-                            newObj.Parent = targetParent
                             if pasteCount % 250 == 0 then task.wait() end
                         end)
                     end
