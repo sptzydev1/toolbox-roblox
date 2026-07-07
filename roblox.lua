@@ -17,13 +17,13 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 
--- [[ MOBILE COMPATIBILITY LAYER (Auto-mapping fungsi File System) ]]
+-- [[ MOBILE COMPATIBILITY LAYER ]]
 local write_f = writefile or savefile or write_file
 local read_f = readfile or loadfile or read_file
 local list_f = listfiles or list_files
 local del_f = delfile or deletefile or delete_file
 
--- [[ DAFTAR SERVICE YANG BISA DICOPY CLIENT (FULL DEX LOOKUP) ]]
+-- [[ DAFTAR SERVICE YANG BISA DICOPY ]]
 local TargetServices = {
     game:GetService("Workspace"),
     game:GetService("ReplicatedStorage"),
@@ -34,7 +34,7 @@ local TargetServices = {
     game:GetService("MaterialService")
 }
 
--- [[ CREATING GUI (Premium Curved UI V3.2 Mobile Optimized) ]]
+-- [[ CREATING GUI (Premium Curved UI V3.3 Anti-Crash) ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV3"
 ScreenGui.ResetOnSpawn = false
@@ -124,7 +124,7 @@ local ListLayout = Instance.new("UIListLayout")
 ListLayout.Padding = UDim.new(0, 4)
 ListLayout.Parent = ListScroll
 
--- [[ LOGIKA DRAGGABLE / SENTUHAN LAYAR MOBILE ]]
+-- [[ LOGIKA DRAGGABLE MOBILE ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -147,7 +147,7 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- [[ LOGIKA PIPELINE DATA ]]
+-- [[ UTILITY PIPELINE DATA ]]
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
@@ -193,7 +193,7 @@ local function getScriptSourceSafe(scriptObj)
     return "-- [Gagal Mendekompresi Kode: Enkripsi Server]"
 end
 
--- 1. ALUR PENYIMPANAN DATA (SAVE FILE PROCESSED)
+-- 1. PROSES COPY (ANTI-FREEZE CHUNKING)
 CopyButton.MouseButton1Click:Connect(function()
     local SaveData = {}
     local count = 0
@@ -202,7 +202,8 @@ CopyButton.MouseButton1Click:Connect(function()
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
     for _, service in ipairs(TargetServices) do
-        local objectsToScan = service:GetDescendants()
+        local objectsToScan = {}
+        pcall(function() objectsToScan = service:GetDescendants() end)
         
         count = count + 1
         table.insert(SaveData, {
@@ -214,20 +215,32 @@ CopyButton.MouseButton1Click:Connect(function()
         })
 
         for _, obj in pairs(objectsToScan) do
-            if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
-                if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) and obj.Name ~= "SpyzyyCopyGuiV3" then
-                    count = count + 1
+            local proceed = false
+            pcall(function()
+                if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
+                    if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) and obj.Name ~= "SpyzyyCopyGuiV3" then
+                        proceed = true
+                    end
+                end
+            end)
+
+            if proceed then
+                count = count + 1
+                if count % 50 == 0 then 
                     CopyButton.Text = "🔍 [" .. count .. "] " .. string.sub(obj.Name, 1, 10)
-                    
-                    local relPath = getRelativePath(obj)
-                    local data = {
-                        Name = obj.Name,
-                        ClassName = obj.ClassName,
-                        RelativePath = relPath,
-                        Depth = #relPath,
-                        Properties = {}
-                    }
-                    
+                    task.wait() -- Mencegah crash/freeze di HP saat scanning
+                end
+                
+                local relPath = getRelativePath(obj)
+                local data = {
+                    Name = obj.Name,
+                    ClassName = obj.ClassName,
+                    RelativePath = relPath,
+                    Depth = #relPath,
+                    Properties = {}
+                }
+                
+                pcall(function()
                     if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
                         data.Properties.Source = getScriptSourceSafe(obj)
                     elseif obj:IsA("BasePart") then
@@ -239,20 +252,18 @@ CopyButton.MouseButton1Click:Connect(function()
                         data.Properties.Anchored = obj.Anchored
                         data.Properties.CanCollide = obj.CanCollide
                     elseif obj:IsA("Tool") then
-                        pcall(function() data.Properties.RequiresHandle = obj.RequiresHandle end)
-                        pcall(function() data.Properties.CanBeDropped = obj.CanBeDropped end)
+                        data.Properties.RequiresHandle = obj.RequiresHandle
+                        data.Properties.CanBeDropped = obj.CanBeDropped
                     end
-                    
-                    table.insert(SaveData, data)
-                    if count % 200 == 0 then task.wait() end
-                end
+                end)
+                
+                table.insert(SaveData, data)
             end
         end
     end
     
     local jsonString = HttpService:JSONEncode(SaveData)
     
-    -- Memeriksa ketersediaan fungsi writefile di Mobile secara aman
     if write_f then 
         local success, err = pcall(function() write_f(fileName, jsonString) end)
         if success then
@@ -261,14 +272,7 @@ CopyButton.MouseButton1Click:Connect(function()
             CopyButton.Text = "❌ Gagal Simpan File"
         end
     else
-        -- Jalur Bypass Clipboard apabila eksekutor benar-benar terkunci total filesystem-nya
-        if setclipboard or toclipboard then
-            local setClip = setclipboard or toclipboard
-            setClip(jsonString)
-            CopyButton.Text = "📋 COPIED TO CLIPBOARD!"
-        else
-            CopyButton.Text = "❌ No Save Support!"
-        end
+        CopyButton.Text = "❌ Exec Gak Support File!"
     end
     
     task.wait(2)
@@ -276,18 +280,17 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. ALUR RECONSTRUCT / PASTE DATA (SAFE READ PROCESSED)
+-- 2. PROSES PASTE (ANTI-CRASH HIERARCHY)
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
     end
     
-    -- Proteksi agar tidak memicu 'attempt to call a nil value' jika fungsi list tidak ada
     if not list_f or not read_f then 
         local ErrorLabel = Instance.new("TextLabel")
         ErrorLabel.Size = UDim2.new(1, 0, 1, 0)
         ErrorLabel.BackgroundTransparency = 1
-        ErrorLabel.Text = "⚠️ Folder Workspace HP Terkunci Exec.\nGunakan mode salin text biasa."
+        ErrorLabel.Text = "⚠️ Exec tidak mendukung simpan file."
         ErrorLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
         ErrorLabel.Font = Enum.Font.SourceSans
         ErrorLabel.TextSize = 11
@@ -296,8 +299,7 @@ _G.UpdatePasteList = function()
     end
     
     local files = {}
-    local getFilesSuccess = pcall(function() files = list_f("") end)
-    if not getFilesSuccess or #files == 0 then return end
+    pcall(function() files = list_f("") end)
     
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
@@ -384,7 +386,11 @@ _G.UpdatePasteList = function()
                             
                             local targetParent = findOrCreateParent(data.RelativePath)
                             pasteCount = pasteCount + 1
-                            FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
+                            
+                            if pasteCount % 50 == 0 then
+                                FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
+                                task.wait() -- Jeda mikro anti-crash saat me-rekonstruksi peta game
+                            end
                             
                             local newObj
                             local props = data.Properties or {}
@@ -396,8 +402,6 @@ _G.UpdatePasteList = function()
                                 newObj = Instance.new("Tool")
                                 pcall(function() newObj.RequiresHandle = props.RequiresHandle end)
                                 pcall(function() newObj.CanBeDropped = props.CanBeDropped end)
-                            elseif AllowedSupportClasses[data.ClassName] then
-                                newObj = Instance.new(data.ClassName)
                             else
                                 newObj = Instance.new(data.ClassName)
                             end
@@ -415,7 +419,6 @@ _G.UpdatePasteList = function()
                             end
                             
                             newObj.Parent = targetParent
-                            if pasteCount % 200 == 0 then task.wait() end
                         end)
                     end
                 end)
