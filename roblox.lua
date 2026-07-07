@@ -47,7 +47,7 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 COPY GAME BY SPYZYY V2 🚀"
+Title.Text = "🚀 COPY MAP BY SPYZYY V2 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 15
@@ -59,7 +59,7 @@ CopyButton.Size = UDim2.new(0, 206, 0, 35)
 CopyButton.Position = UDim2.new(0, 12, 0, 45)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "📦 DEEP COPY (ALL LAYER)"
+CopyButton.Text = "COPYY OM"
 CopyButton.Font = Enum.Font.SourceSansBold
 CopyButton.TextSize = 12
 CopyButton.Parent = MainFrame
@@ -187,9 +187,9 @@ CopyButton.MouseButton1Click:Connect(function()
     end
     
     writefile(fileName, HttpService:JSONEncode(SaveData))
-    CopyButton.Text = "💾 COPIED LAYER: " .. count
+    CopyButton.Text = "💾 COPIED: " .. count
     task.wait(1.5)
-    CopyButton.Text = "📦 DEEP COPY (ALL LAYER)"
+    CopyButton.Text = "COPY OM"
     _G.UpdatePasteList()
 end)
 
@@ -223,7 +223,7 @@ _G.UpdatePasteList = function()
             BtnCorner.Parent = FileSelectBtn
             
             FileSelectBtn.MouseButton1Click:Connect(function()
-                FileSelectBtn.Text = " ⌛ LOADING LAYERS..."
+                FileSelectBtn.Text = " ⌛ LOADING..."
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
                 local success, err = pcall(function()
