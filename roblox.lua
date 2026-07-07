@@ -150,7 +150,17 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. PROSES COPY DENGAN ANIMASI ANIMASI NAMA OBJEK
+-- Fungsi cek apakah objek adalah bagian dari karakter player manapun
+local function isAPlayerCharacter(obj)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then
+            return true
+        end
+    end
+    return false
+end
+
+-- 1. PROSES COPY DENGAN FIX PROTEKSI MESH & FILTER PLAYER
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -163,15 +173,14 @@ CopyButton.MouseButton1Click:Connect(function()
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    -- Mengumpulkan target scan terlebih dahulu
     local objectsToScan = TargetFolder:GetDescendants()
     
     for _, obj in pairs(objectsToScan) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") then
+            -- FILTER DIPERKETAT: Memastikan objek bukan kamera, terrain, ataupun bagian tubuh player
+            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
                 
-                -- ANIMASI LIVE TEXT: Menampilkan nama objek yang sedang di-copy pada tombol
                 CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
                 
                 local relPath = getRelativePath(obj)
@@ -191,16 +200,16 @@ CopyButton.MouseButton1Click:Connect(function()
                     data.Anchored = obj.Anchored
                     data.CanCollide = obj.CanCollide
                     
+                    -- FIX PROTEKSI: Menggunakan pcall agar jika properti MeshId/TextureId tidak ada, script tidak akan crash/stuck!
                     if obj:IsA("MeshPart") then
-                        data.MeshId = obj.MeshId
-                        data.TextureId = obj.TextureId
+                        pcall(function() data.MeshId = obj.MeshId end)
+                        pcall(function() data.TextureId = obj.TextureId end)
                     elseif obj:IsA("UnionOperation") then
-                        data.AssetId = obj.AssetId
+                        pcall(function() data.AssetId = obj.AssetId end)
                     end
                 end
                 table.insert(SaveData, data)
                 
-                -- Setiap 250 objek diberi jeda mikro agar UI sempat ter-render & game anti-freeze
                 if count % 250 == 0 then task.wait() end
             end
         end
@@ -213,7 +222,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES PASTE DENGAN ANIMASI ANIMASI NAMA OBJEK
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -292,7 +301,6 @@ _G.UpdatePasteList = function()
                                 return
                             end
                             
-                            -- ANIMASI LIVE TEXT: Menampilkan nama objek yang sedang dibentuk ulang pada tombol list
                             pasteCount = pasteCount + 1
                             FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
                             
