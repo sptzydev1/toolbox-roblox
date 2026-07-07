@@ -17,6 +17,12 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 
+-- [[ MOBILE COMPATIBILITY LAYER (Auto-mapping fungsi File System) ]]
+local write_f = writefile or savefile or write_file
+local read_f = readfile or loadfile or read_file
+local list_f = listfiles or list_files
+local del_f = delfile or deletefile or delete_file
+
 -- [[ DAFTAR SERVICE YANG BISA DICOPY CLIENT (FULL DEX LOOKUP) ]]
 local TargetServices = {
     game:GetService("Workspace"),
@@ -28,7 +34,7 @@ local TargetServices = {
     game:GetService("MaterialService")
 }
 
--- [[ CREATING GUI (Premium Curved UI V3) ]]
+-- [[ CREATING GUI (Premium Curved UI V3.2 Mobile Optimized) ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV3"
 ScreenGui.ResetOnSpawn = false
@@ -100,10 +106,6 @@ local ListScrollCorner = Instance.new("UICorner")
 ListScrollCorner.CornerRadius = UDim.new(0, 6)
 ListScrollCorner.Parent = ListScroll
 
-local ListLayout = Instance.new("UIListLayout")
-ListLayout.Padding = UDim.new(0, 4)
-ListLayout.Parent = ListScroll
-
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 216, 0, 22)
 RefreshButton.Position = UDim2.new(0, 12, 0, 245)
@@ -118,7 +120,11 @@ local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
 
--- [[ LOGIKA DRAGGABLE ]]
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Padding = UDim.new(0, 4)
+ListLayout.Parent = ListScroll
+
+-- [[ LOGIKA DRAGGABLE / SENTUHAN LAYAR MOBILE ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -141,9 +147,7 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
-
--- [[ LOGIKA CORE ANTI-LIMIT / ALUR REKONSTRUKSI DEX ]]
-
+-- [[ LOGIKA PIPELINE DATA ]]
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
@@ -186,16 +190,11 @@ local function getScriptSourceSafe(scriptObj)
     end
     local success, res = pcall(function() return scriptObj.Source end)
     if success and res and res ~= "" then return res end
-    return "-- [Gagal Mendekompresi Kode: Hak akses dibatasi executor / enkripsi server]"
+    return "-- [Gagal Mendekompresi Kode: Enkripsi Server]"
 end
 
--- 1. PROSES COPY SELURUH SERVICE YANG TERSEDIA
+-- 1. ALUR PENYIMPANAN DATA (SAVE FILE PROCESSED)
 CopyButton.MouseButton1Click:Connect(function()
-    if not writefile then 
-        CopyButton.Text = "Executor Tak Support!"
-        return 
-    end
-
     local SaveData = {}
     local count = 0
     
@@ -205,7 +204,6 @@ CopyButton.MouseButton1Click:Connect(function()
     for _, service in ipairs(TargetServices) do
         local objectsToScan = service:GetDescendants()
         
-        -- Daftarkan root service
         count = count + 1
         table.insert(SaveData, {
             Name = service.Name,
@@ -232,7 +230,6 @@ CopyButton.MouseButton1Click:Connect(function()
                     
                     if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
                         data.Properties.Source = getScriptSourceSafe(obj)
-                    
                     elseif obj:IsA("BasePart") then
                         data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
                         data.Properties.CFrame = {obj.CFrame:GetComponents()}
@@ -241,68 +238,69 @@ CopyButton.MouseButton1Click:Connect(function()
                         data.Properties.Transparency = obj.Transparency
                         data.Properties.Anchored = obj.Anchored
                         data.Properties.CanCollide = obj.CanCollide
-                        
-                        if obj:IsA("MeshPart") then
-                            pcall(function() data.Properties.MeshId = obj.MeshId end)
-                            pcall(function() data.Properties.TextureId = obj.TextureId end)
-                        elseif obj:IsA("UnionOperation") then
-                            pcall(function() data.Properties.AssetId = obj.AssetId end)
-                        end
-                    
-                    elseif obj:IsA("Model") then
-                        pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
-                        
                     elseif obj:IsA("Tool") then
                         pcall(function() data.Properties.RequiresHandle = obj.RequiresHandle end)
                         pcall(function() data.Properties.CanBeDropped = obj.CanBeDropped end)
-                        pcall(function() data.Properties.ToolTip = obj.ToolTip end)
-
-                    elseif obj:IsA("GuiObject") or obj:IsA("LayerCollector") then
-                        pcall(function() data.Properties.Size = {obj.Size.X.Scale, obj.Size.X.Offset, obj.Size.Y.Scale, obj.Size.Y.Offset} end)
-                        pcall(function() data.Properties.Position = {obj.Position.X.Scale, obj.Position.X.Offset, obj.Position.Y.Scale, obj.Position.Y.Offset} end)
-                        pcall(function() data.Properties.BackgroundColor3 = {obj.BackgroundColor3.r * 255, obj.BackgroundColor3.g * 255, obj.BackgroundColor3.b * 255} end)
-                        pcall(function() data.Properties.Visible = obj.Visible end)
-                        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                            pcall(function() data.Properties.Text = obj.Text end)
-                            pcall(function() data.Properties.TextSize = obj.TextSize end)
-                        end
-                    
-                    elseif AllowedSupportClasses[obj.ClassName] then
-                        pcall(function() data.Properties.Texture = obj.Texture end)
-                        pcall(function() data.Properties.TextureId = obj.TextureId end)
-                        pcall(function() data.Properties.MeshId = obj.MeshId end)
-                        pcall(function() data.Properties.Enabled = obj.Enabled end)
-                        pcall(function() data.Properties.Transparency = obj.Transparency end)
-                        pcall(function() data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end)
                     end
                     
                     table.insert(SaveData, data)
-                    if count % 250 == 0 then task.wait() end
+                    if count % 200 == 0 then task.wait() end
                 end
             end
         end
     end
     
-    writefile(fileName, HttpService:JSONEncode(SaveData))
-    CopyButton.Text = "💾 SAVED: " .. count .. " OBJS"
+    local jsonString = HttpService:JSONEncode(SaveData)
+    
+    -- Memeriksa ketersediaan fungsi writefile di Mobile secara aman
+    if write_f then 
+        local success, err = pcall(function() write_f(fileName, jsonString) end)
+        if success then
+            CopyButton.Text = "💾 FILE SAVED: " .. count
+        else
+            CopyButton.Text = "❌ Gagal Simpan File"
+        end
+    else
+        -- Jalur Bypass Clipboard apabila eksekutor benar-benar terkunci total filesystem-nya
+        if setclipboard or toclipboard then
+            local setClip = setclipboard or toclipboard
+            setClip(jsonString)
+            CopyButton.Text = "📋 COPIED TO CLIPBOARD!"
+        else
+            CopyButton.Text = "❌ No Save Support!"
+        end
+    end
+    
     task.wait(2)
     CopyButton.Text = "COPY ALL SERVICES"
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE KEMBALI STRUKTUR DATA
+-- 2. ALUR RECONSTRUCT / PASTE DATA (SAFE READ PROCESSED)
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
     end
     
-    if not listfiles then return end
-    local files = listfiles("")
-    local anyFile = false
+    -- Proteksi agar tidak memicu 'attempt to call a nil value' jika fungsi list tidak ada
+    if not list_f or not read_f then 
+        local ErrorLabel = Instance.new("TextLabel")
+        ErrorLabel.Size = UDim2.new(1, 0, 1, 0)
+        ErrorLabel.BackgroundTransparency = 1
+        ErrorLabel.Text = "⚠️ Folder Workspace HP Terkunci Exec.\nGunakan mode salin text biasa."
+        ErrorLabel.TextColor3 = Color3.fromRGB(255, 140, 0)
+        ErrorLabel.Font = Enum.Font.SourceSans
+        ErrorLabel.TextSize = 11
+        ErrorLabel.Parent = ListScroll
+        return 
+    end
+    
+    local files = {}
+    local getFilesSuccess = pcall(function() files = list_f("") end)
+    if not getFilesSuccess or #files == 0 then return end
     
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
-            anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
             local ItemFrame = Instance.new("Frame")
@@ -335,8 +333,8 @@ _G.UpdatePasteList = function()
             DeleteBtn.Parent = ItemFrame
 
             DeleteBtn.MouseButton1Click:Connect(function()
-                if delfile then
-                    pcall(function() delfile(file) end)
+                if del_f then
+                    pcall(function() del_f(file) end)
                     ItemFrame:Destroy()
                     task.wait(0.1)
                     _G.UpdatePasteList()
@@ -347,10 +345,9 @@ _G.UpdatePasteList = function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
                 local success, err = pcall(function()
-                    local fileContent = readfile(file)
+                    local fileContent = read_f(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
-                    -- Urutkan berdasarkan kedalaman hierarki (Dex Tree Ordering)
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -383,7 +380,7 @@ _G.UpdatePasteList = function()
                     
                     for _, data in pairs(loadedData) do
                         pcall(function()
-                            if data.Depth == 0 then return end -- Root target dilewati
+                            if data.Depth == 0 then return end
                             
                             local targetParent = findOrCreateParent(data.RelativePath)
                             pasteCount = pasteCount + 1
@@ -399,21 +396,8 @@ _G.UpdatePasteList = function()
                                 newObj = Instance.new("Tool")
                                 pcall(function() newObj.RequiresHandle = props.RequiresHandle end)
                                 pcall(function() newObj.CanBeDropped = props.CanBeDropped end)
-                                pcall(function() newObj.ToolTip = props.ToolTip end)
                             elseif AllowedSupportClasses[data.ClassName] then
                                 newObj = Instance.new(data.ClassName)
-                                pcall(function()
-                                    if props.Size and newObj:IsA("GuiObject") then newObj.Size = UDim2.new(unpack(props.Size)) end
-                                    if props.Position and newObj:IsA("GuiObject") then newObj.Position = UDim2.new(unpack(props.Position)) end
-                                    if props.Text then newObj.Text = props.Text end
-                                end)
-                            elseif data.ClassName == "MeshPart" or (props.MeshId and props.MeshId ~= "") then
-                                newObj = Instance.new("Part")
-                                local specialMesh = Instance.new("SpecialMesh")
-                                specialMesh.MeshType = Enum.MeshType.FileMesh
-                                specialMesh.MeshId = props.MeshId or ""
-                                specialMesh.TextureId = props.TextureId or ""
-                                specialMesh.Parent = newObj
                             else
                                 newObj = Instance.new(data.ClassName)
                             end
@@ -430,12 +414,8 @@ _G.UpdatePasteList = function()
                                 newObj.CanCollide = props.CanCollide
                             end
                             
-                            if newObj:IsA("Model") and props.WorldPivot then
-                                pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
-                            end
-                            
                             newObj.Parent = targetParent
-                            if pasteCount % 250 == 0 then task.wait() end
+                            if pasteCount % 200 == 0 then task.wait() end
                         end)
                     end
                 end)
