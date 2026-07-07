@@ -5,15 +5,12 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Nama file penyimpanan di PC kamu (akan ada di folder workspace executor-mu)
-local FILE_NAME = "CrossGameClipboard.json" 
-
--- Target folder yang mau dicopy (Default: seluruh Workspace)
-local TargetFolder = workspace
+local FILE_NAME = "CrossGameAdvancedClipboard.json" 
+local TargetFolder = workspace -- Meng-scan seluruh Workspace
 
 -- [[ CREATING GUI (Persegi Empat Kecil) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CrossGameGui"
+ScreenGui.Name = "CrossGameAdvancedGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
@@ -21,9 +18,9 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 160, 0, 80)
 MainFrame.Position = UDim2.new(0.5, -80, 0.5, -40)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 35)
 MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 150)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 150)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
@@ -35,20 +32,20 @@ UIListLayout.Parent = MainFrame
 
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 140, 0, 30)
-CopyButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+CopyButton.BackgroundColor3 = Color3.fromRGB(50, 45, 55)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "👉 COPY ALL (FILE)"
+CopyButton.Text = "📦 COPY ALL + STRUCT"
 CopyButton.Font = Enum.Font.SourceSansBold
-CopyButton.TextSize = 13
+CopyButton.TextSize = 12
 CopyButton.Parent = MainFrame
 
 local PasteButton = Instance.new("TextButton")
 PasteButton.Size = UDim2.new(0, 140, 0, 30)
-PasteButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+PasteButton.BackgroundColor3 = Color3.fromRGB(50, 45, 55)
 PasteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-PasteButton.Text = "📥 PASTE ALL (FILE)"
+PasteButton.Text = "📥 PASTE ALL + STRUCT"
 PasteButton.Font = Enum.Font.SourceSansBold
-PasteButton.TextSize = 13
+PasteButton.TextSize = 12
 PasteButton.Parent = MainFrame
 
 -- [[ LOGIKA DRAGGABLE ]]
@@ -75,9 +72,20 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ LOGIKA CROSS-GAME BERBASIS FILE SYSTEM ]]
+-- [[ LOGIKA REKURSIF COPY & PASTE (FOLDER & MODEL SUPPORT) ]]
 
--- 1. Fungsi untuk Mengubah Objek menjadi Data Teks (JSON)
+-- Fungsi untuk mendapatkan "Path" atau Alamat Parent agar strukturnya tidak hancur saat di-paste
+local function getRelativePath(obj)
+    local path = {}
+    local current = obj.Parent
+    while current and current ~= workspace and current ~= game do
+        table.insert(path, 1, {Name = current.Name, ClassName = current.ClassName})
+        current = current.Parent
+    end
+    return path
+end
+
+-- 1. TOMBOL COPY (Mendukung Folder, Model, dan Part di dalamnya)
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -87,76 +95,104 @@ CopyButton.MouseButton1Click:Connect(function()
     local SaveData = {}
     local count = 0
     
-    for _, obj in pairs(TargetFolder:GetChildren()) do
-        -- Batasi hanya Part biasa untuk kestabilan data JSON
-        if obj:IsA("Part") or obj:IsA("WedgePart") or obj:IsA("CornerWedgePart") then
+    -- Menggunakan GetDescendants() agar folder dan model di dalam folder lain ikut ter-scan
+    for _, obj in pairs(TargetFolder:GetDescendants()) do
+        -- Kita hanya menyimpan Folder, Model, dan objek fisik (Part)
+        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
             count = count + 1
-            table.insert(SaveData, {
+            
+            local data = {
                 Name = obj.Name,
                 ClassName = obj.ClassName,
-                Size = {obj.Size.X, obj.Size.Y, obj.Size.Z},
-                Position = {obj.Position.X, obj.Position.Y, obj.Position.Z},
-                Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255},
-                Material = obj.Material.Name,
-                Transparency = obj.Transparency,
-                Anchored = obj.Anchored
-            })
+                RelativePath = getRelativePath(obj) -- Menyimpan struktur silsilah keluarga objek
+            }
+            
+            -- Jika objek adalah Part fisik, simpan properti transformasinya
+            if obj:IsA("BasePart") then
+                data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                data.Position = {obj.Position.X, obj.Position.Y, obj.Position.Z}
+                data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
+                data.Material = obj.Material.Name
+                data.Transparency = obj.Transparency
+                data.Anchored = obj.Anchored
+            end
+            
+            table.insert(SaveData, data)
         end
     end
     
-    -- Mengubah tabel Lua menjadi string teks JSON
-    local jsonString = HttpService:JSONEncode(SaveData)
-    
-    -- Menyimpan teks ke dalam file di PC kamu
-    writefile(FILE_NAME, jsonString)
-    
-    CopyButton.Text = "SAVED " .. count .. " OBJEK TO PC"
+    writefile(FILE_NAME, HttpService:JSONEncode(SaveData))
+    CopyButton.Text = "SAVED " .. count .. " ASSETS TO PC"
     task.wait(1.5)
-    CopyButton.Text = "👉 COPY ALL (FILE)"
+    CopyButton.Text = "📦 COPY ALL + STRUCT"
 end)
 
--- 2. Fungsi untuk Membaca File dan Memunculkan Objek di Game Lain
+-- 2. TOMBOL PASTE (Membangun ulang Folder/Model sesuai struktur asli)
 PasteButton.MouseButton1Click:Connect(function()
-    if not readfile then 
-        PasteButton.Text = "Executor Tak Support!"
+    if not readfile or not isfile(FILE_NAME) then 
+        PasteButton.Text = "File Kosong / Tak Support!"; 
+        task.wait(1.5); 
+        PasteButton.Text = "📥 PASTE ALL + STRUCT"; 
         return 
     end
     
-    -- Mengecek apakah file hasil copy dari game 1 ada
-    if not isfile(FILE_NAME) then
-        PasteButton.Text = "File Copy Kosong!"
-        task.wait(1.5)
-        PasteButton.Text = "📥 PASTE ALL (FILE)"
-        return
+    local loadedData = HttpService:JSONDecode(readfile(FILE_NAME))
+    
+    -- Root folder utama untuk menampung hasil paste di game baru
+    local MasterFolder = workspace:FindFirstChild("Hasil_Paste_Struktur")
+    if not MasterFolder then
+        MasterFolder = Instance.new("Folder")
+        MasterFolder.Name = "Hasil_Paste_Struktur"
+        MasterFolder.Parent = workspace
     end
     
-    -- Membaca data teks dari file PC
-    local fileContent = readfile(FILE_NAME)
-    local loadedData = HttpService:JSONDecode(fileContent)
+    -- Fungsi pembantu untuk mencari atau membuat Parent (Folder/Model) secara otomatis saat rekonstruksi
+    local function findOrCreateParent(relativePath)
+        local currentParent = MasterFolder
+        for _, pathInfo in ipairs(relativePath) do
+            local found = currentParent:FindFirstChild(pathInfo.Name)
+            if not found then
+                found = Instance.new(pathInfo.ClassName)
+                found.Name = pathInfo.Name
+                found.Parent = currentParent
+            end
+            currentParent = found
+        end
+        return currentParent
+    end
     
-    local PastedFolder = Instance.new("Folder")
-    PastedFolder.Name = "Hasil_Paste_GameLain"
-    PastedFolder.Parent = workspace
-    
-    -- Rekonstruksi/Membuat ulang objek di game baru
+    -- Mulai melakukan pemPembuatan ulang objek
     for _, data in pairs(loadedData) do
         pcall(function()
-            local newPart = Instance.new(data.ClassName)
-            newPart.Name = data.Name
-            newPart.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
+            -- Cari tahu objek ini harus ditaruh di folder/model mana
+            local targetParent = findOrCreateParent(data.RelativePath)
             
-            -- Memunculkan tepat di koordinat saat di-copy
-            newPart.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
-            newPart.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
-            newPart.Material = Enum.Material[data.Material]
-            newPart.Transparency = data.Transparency
-            newPart.Anchored = data.Anchored
+            -- Cek apakah objek (terutama Folder/Model pembungkus) sudah dibuat oleh fungsi di atas
+            local existingObj = targetParent:FindFirstChild(data.Name)
+            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
+                -- Jika sudah ada pembungkusnya, tidak perlu dibuat double
+                return
+            end
             
-            newPart.Parent = PastedFolder
+            -- Buat objek baru
+            local newObj = Instance.new(data.ClassName)
+            newObj.Name = data.Name
+            
+            -- Jika berupa Part, isi semua data fisiknya
+            if data.Size and newObj:IsA("BasePart") then
+                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
+                newObj.Position = Vector3.new(data.Position[1], data.Position[2], data.Position[3])
+                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
+                newObj.Material = Enum.Material[data.Material]
+                newObj.Transparency = data.Transparency
+                newObj.Anchored = data.Anchored
+            end
+            
+            newObj.Parent = targetParent
         end)
     end
     
-    PasteButton.Text = "SUCCESS LOADED FROM PC!"
+    PasteButton.Text = "STRUCTURE REBUILT!"
     task.wait(1.5)
-    PasteButton.Text = "📥 PASTE ALL (FILE)"
+    PasteButton.Text = "📥 PASTE ALL + STRUCT"
 end)
