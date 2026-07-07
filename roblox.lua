@@ -174,14 +174,37 @@ local function isAPlayerCharacter(obj)
     return false
 end
 
--- Menambahkan class Script ke daftar yang diperbolehkan
+-- Memastikan Class Script terdaftar
 local AllowedSupportClasses = {
     ["Texture"] = true, ["Decal"] = true, ["SurfaceAppearance"] = true, 
     ["SpecialMesh"] = true, ["BlockMesh"] = true, ["CylinderMesh"] = true,
     ["ParticleEmitter"] = true, ["PointLight"] = true, ["SpotLight"] = true, ["SurfaceLight"] = true,
     ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true,
-    ["Script"] = true, ["LocalScript"] = true, ["ModuleScript"] = true -- Tambahan Kelas Script
+    ["Script"] = true, ["LocalScript"] = true, ["ModuleScript"] = true
 }
+
+-- Fungsi Ekstra untuk Mendapatkan Source Code secara Aman (Mendukung Decompiler Executor)
+local function getScriptSourceSafe(scriptObj)
+    local source = ""
+    
+    -- 1. Coba metode decompile bawaan executor (Paling Ampuh untuk game orang lain)
+    if decompile then
+        local success, res = pcall(function() return decompile(scriptObj) end)
+        if success and res and res ~= "" then return res end
+    end
+    
+    -- 2. Coba fungsi alternatif executor (getscriptsource)
+    if getscriptsource then
+        local success, res = pcall(function() return getscriptsource(scriptObj) end)
+        if success and res and res ~= "" then return res end
+    end
+
+    -- 3. Coba baca properti langsung (Hanya bekerja jika itu game milikmu sendiri di Studio)
+    local success, res = pcall(function() return scriptObj.Source end)
+    if success and res and res ~= "" then return res end
+    
+    return "-- [Gagal membaca kode: Executor tidak mendukung Decompile/Source read pada game ini]"
+end
 
 -- 1. PROSES COPY DENGAN PROPERTI PENUH & POSISI ASLI
 CopyButton.MouseButton1Click:Connect(function()
@@ -196,7 +219,13 @@ CopyButton.MouseButton1Click:Connect(function()
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    local objectsToScan = TargetFolder:GetDescendants()
+    -- Memperluas area scan tidak hanya di Workspace, tapi juga di tempat penyimpanan lain agar script ketemu
+    local objectsToScan = {}
+    for _, service in pairs({workspace, game:GetService("ReplicatedStorage"), game:GetService("Lighting")}) do
+        for _, child in pairs(service:GetDescendants()) do
+            table.insert(objectsToScan, child)
+        end
+    end
     
     for _, obj in pairs(objectsToScan) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
@@ -214,11 +243,9 @@ CopyButton.MouseButton1Click:Connect(function()
                     Properties = {}
                 }
                 
-                -- Logika Ekstraksi Properti Script
+                -- Memanggil Fungsi Pembaca Kode yang Diperbarui
                 if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
-                    pcall(function()
-                        data.Properties.Source = obj.Source
-                    end)
+                    data.Properties.Source = getScriptSourceSafe(obj)
                 
                 elseif obj:IsA("BasePart") then
                     data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
@@ -280,7 +307,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN (DENGAN CORE CONTAINER UNTUK ICON DELETE)
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
@@ -295,15 +322,13 @@ _G.UpdatePasteList = function()
             anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
-            -- Container Frame untuk memisahkan Tombol Pilih dan Tombol Delete
             local ItemFrame = Instance.new("Frame")
             ItemFrame.Size = UDim2.new(1, -6, 0, 26)
             ItemFrame.BackgroundTransparency = 1
             ItemFrame.Parent = ListScroll
             
-            -- Tombol Utama (Pilih / Paste File)
             local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -26, 1, 0) -- Beri space di kanan untuk tombol delete
+            FileSelectBtn.Size = UDim2.new(1, -26, 1, 0)
             FileSelectBtn.Position = UDim2.new(0, 0, 0, 0)
             FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
@@ -317,7 +342,6 @@ _G.UpdatePasteList = function()
             BtnCorner.CornerRadius = UDim.new(0, 4)
             BtnCorner.Parent = FileSelectBtn
             
-            -- Tombol Delete (❌) di Sudut Kanan Bersebelahan dengan FileSelectBtn
             local DeleteBtn = Instance.new("TextButton")
             DeleteBtn.Size = UDim2.new(0, 22, 1, 0)
             DeleteBtn.Position = UDim2.new(1, -22, 0, 0)
@@ -332,12 +356,9 @@ _G.UpdatePasteList = function()
             DelCorner.CornerRadius = UDim.new(0, 4)
             DelCorner.Parent = DeleteBtn
 
-            -- Logika Hapus File Saat Tombol Delete diklik
             DeleteBtn.MouseButton1Click:Connect(function()
                 if delfile then
-                    pcall(function()
-                        delfile(file)
-                    end)
+                    pcall(function() delfile(file) end)
                     ItemFrame:Destroy()
                     task.wait(0.1)
                     _G.UpdatePasteList()
@@ -346,7 +367,6 @@ _G.UpdatePasteList = function()
                 end
             end)
             
-            -- Logika Paste Saat Tombol File Diklik
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
@@ -402,7 +422,7 @@ _G.UpdatePasteList = function()
                             local newObj
                             local props = data.Properties or {}
                             
-                            -- Deteksi Pembuatan Objek Script Baru & Isi Source Kodenya
+                            -- Membuat Kembali Objek Script Beserta Isi Kodenya saat Paste
                             if data.ClassName == "Script" or data.ClassName == "LocalScript" or data.ClassName == "ModuleScript" then
                                 newObj = Instance.new(data.ClassName)
                                 pcall(function()
