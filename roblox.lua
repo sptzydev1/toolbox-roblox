@@ -18,7 +18,7 @@ end)
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
--- [[ CREATING GUI (Premium Curved UI V2 - Updated to V3 Engine) ]]
+-- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
@@ -73,7 +73,7 @@ local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
 ListLabel.Position = UDim2.new(0, 12, 0, 90)
 ListLabel.BackgroundTransparency = 1
-ListLabel.Text = "Succes Copyy:"
+ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 ListLabel.TextXAlignment = Enum.TextXAlignment.Left
 ListLabel.Font = Enum.Font.SourceSansSemibold
@@ -138,7 +138,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ LOGIKA CORE ANTI-LIMIT LAYER (V3 PERFECT MATCH) ]]
+-- [[ LOGIKA CORE ANTI-LIMIT LAYER ]]
 
 local function getRelativePath(obj)
     local path = {}
@@ -150,12 +150,15 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. PROSES COPY DEEP HIERARCHY + FIX COMPLETE DATA
+-- 1. PROSES COPY DEEP HIERARCHY
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
     end
+
+    CopyButton.Text = "⌛ SCANNING WORKSPACE..."
+    task.wait(0.1)
 
     local SaveData = {}
     local count = 0
@@ -164,10 +167,8 @@ CopyButton.MouseButton1Click:Connect(function()
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
     for _, obj in pairs(TargetFolder:GetDescendants()) do
-        -- BasePart mencakup MeshPart, UnionOperation, Wedge, Seat, dll.
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            -- Mencegah penyalinan sistem esensial internal agar tidak bug/error
-            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("LuaSourceContainer") then
+            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") then
                 count = count + 1
                 local relPath = getRelativePath(obj)
                 
@@ -180,23 +181,25 @@ CopyButton.MouseButton1Click:Connect(function()
                 
                 if obj:IsA("BasePart") then
                     data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                    
-                    -- Menggunakan komparasi Matrix CFrame penuh (Rotasi + Posisi Presisi)
                     data.CFrame = {obj.CFrame:GetComponents()}
-                    
                     data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
                     data.Material = obj.Material.Name
                     data.Transparency = obj.Transparency
                     data.Anchored = obj.Anchored
                     data.CanCollide = obj.CanCollide
                     
-                    -- Ekstraksi data ID internal khusus MeshPart
+                    -- FIX: Menyimpan data ID MeshPart & Union secara aman
                     if obj:IsA("MeshPart") then
                         data.MeshId = obj.MeshId
                         data.TextureId = obj.TextureId
+                    elseif obj:IsA("UnionOperation") then
+                        data.AssetId = obj.AssetId
                     end
                 end
                 table.insert(SaveData, data)
+                
+                -- Anti Crash untuk Map Besar
+                if count % 500 == 0 then task.wait() end
             end
         end
     end
@@ -208,7 +211,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE SELEKTIF BERDASARKAN CFRAME MATRIX
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -245,6 +248,7 @@ _G.UpdatePasteList = function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
+                    -- Urutkan berdasarkan kedalaman hirarki (Bapak dulu baru anak)
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -261,16 +265,22 @@ _G.UpdatePasteList = function()
                         for _, pathInfo in ipairs(relativePath) do
                             local found = currentParent:FindFirstChild(pathInfo.Name)
                             if not found then
-                                local successInst, resInst = pcall(function() return Instance.new(pathInfo.ClassName) end)
-                                found = successInst and resInst or Instance.new("Folder")
-                                found.Name = pathInfo.Name
-                                found.Parent = currentParent
+                                pcall(function()
+                                    if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
+                                        found = Instance.new(pathInfo.ClassName)
+                                    else
+                                        found = Instance.new("Folder") -- Fallback aman jika class tak dikenal
+                                    end
+                                    found.Name = pathInfo.Name
+                                    found.Parent = currentParent
+                                end)
                             end
                             currentParent = found
                         end
                         return currentParent
                     end
                     
+                    local pasteCount = 0
                     for _, data in pairs(loadedData) do
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
@@ -280,27 +290,37 @@ _G.UpdatePasteList = function()
                                 return
                             end
                             
-                            local newObj = Instance.new(data.ClassName)
+                            local newObj
+                            -- FIX: Penanganan spesial agar MeshPart tidak error saat dibuat lewat Instance.new
+                            if data.ClassName == "MeshPart" or (data.MeshId and data.MeshId ~= "") then
+                                newObj = Instance.new("Part")
+                                local specialMesh = Instance.new("SpecialMesh")
+                                specialMesh.MeshType = Enum.MeshType.FileMesh
+                                specialMesh.MeshId = data.MeshId or ""
+                                specialMesh.TextureId = data.TextureId or ""
+                                specialMesh.Parent = newObj
+                            elseif data.ClassName == "Folder" or data.ClassName == "Model" or data.ClassName == "Part" or data.ClassName == "WedgePart" or data.ClassName == "CornerWedgePart" or data.ClassName == "TrussPart" then
+                                newObj = Instance.new(data.ClassName)
+                            else
+                                newObj = Instance.new("Part") -- Fallback untuk jenis part lainnya
+                            end
+                            
                             newObj.Name = data.Name
                             
                             if data.CFrame and newObj:IsA("BasePart") then
                                 newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
-                                
-                                -- Pengaplikasian koordinat CFrame Matrix secara utuh (Posisi + Rotasi Mutlak)
                                 newObj.CFrame = CFrame.new(unpack(data.CFrame))
-                                
                                 newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
-                                newObj.Material = Enum.Material[data.Material]
+                                pcall(function() newObj.Material = Enum.Material[data.Material] end)
                                 newObj.Transparency = data.Transparency
                                 newObj.Anchored = data.Anchored
                                 newObj.CanCollide = data.CanCollide
-                                
-                                if data.MeshId and newObj:IsA("MeshPart") then
-                                    newObj.MeshId = data.MeshId
-                                    newObj.TextureId = data.TextureId
-                                end
                             end
+                            
                             newObj.Parent = targetParent
+                            pasteCount = pasteCount + 1
+                            
+                            if pasteCount % 500 == 0 then task.wait() end
                         end)
                     end
                 end)
