@@ -1,3 +1,5 @@
+
+
 -- [[ CONFIGURASI & VARIABLE UTAMA ]]
 local HttpService = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
@@ -15,15 +17,7 @@ pcall(function()
 end)
 
 local FILE_PREFIX = "GameCopy_"
-
--- Daftar target Service yang akan di-copy
-local TargetServices = {
-    game:GetService("Workspace"),
-    game:GetService("ReplicatedStorage"),
-    game:GetService("StarterPlayer"),
-    game:GetService("ServerStorage"),
-    game:GetService("StarterPack")
-}
+local TargetFolder = workspace
 
 -- [[ CREATING GUI ]]
 local ScreenGui = Instance.new("ScreenGui")
@@ -52,10 +46,10 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 MULTI-SERVICE MAP COPY V4 🚀"
+Title.Text = "🚀 COPY MAP ANTI-ANEH V3 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 13
+Title.TextSize = 14
 Title.Parent = MainFrame
 
 local CopyButton = Instance.new("TextButton")
@@ -120,8 +114,7 @@ UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
-    -- Berhenti tracking jika mencapai 'game' atau kehabisan parent
-    while current and current ~= game do
+    while current and current ~= workspace and current ~= game do
         table.insert(path, 1, {Name = current.Name, ClassName = current.ClassName})
         current = current.Parent
     end
@@ -144,59 +137,53 @@ CopyButton.MouseButton1Click:Connect(function()
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    -- Looping melalui setiap service yang terdaftar
-    for _, service in ipairs(TargetServices) do
-        local success, err = pcall(function()
-            for _, obj in pairs(service:GetDescendants()) do
-                if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
-                    count = count + 1
-                    CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
-                    
-                    local relPath = getRelativePath(obj)
-                    local data = {
-                        Name = obj.Name,
-                        ClassName = obj.ClassName,
-                        RelativePath = relPath,
-                        Depth = #relPath,
-                        Properties = {}
-                    }
-                    
-                    -- Ekstraksi Properti Dasar Universal
-                    pcall(function() data.Properties.TextureId = obj.TextureId end)
-                    pcall(function() data.Properties.Texture = obj.Texture end)
-                    pcall(function() data.Properties.Image = obj.Image end)
-                    pcall(function() data.Properties.Face = obj.Face.Name end)
-                    pcall(function() data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255} end)
-                    
-                    -- Perekaman Struktur Model (Anti-Aneh Lapisan Primer)
-                    if obj:IsA("Model") then
-                        pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
-                    end
-                    
-                    -- Perekaman Fisik Geometri Part
-                    if obj:IsA("BasePart") then
-                        data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                        data.Properties.CFrame = {obj.CFrame:GetComponents()}
-                        data.Properties.Material = obj.Material.Name
-                        data.Properties.Transparency = obj.Transparency
-                        data.Properties.Anchored = obj.Anchored
-                        data.Properties.CanCollide = obj.CanCollide
-                        
-                        -- Lapisan Rekam Skala Khusus Mesh/Union
-                        if obj:IsA("MeshPart") then
-                            pcall(function() data.Properties.MeshId = obj.MeshId end)
-                            pcall(function() data.Properties.Size0 = {obj.Size.X, obj.Size.Y, obj.Size.Z} end)
-                        elseif obj:IsA("UnionOperation") then
-                            pcall(function() data.Properties.AssetId = obj.AssetId end)
-                        end
-                    end
-                    
-                    table.insert(SaveData, data)
-                    if count % 250 == 0 then task.wait() end
+    for _, obj in pairs(TargetFolder:GetDescendants()) do
+        if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
+            count = count + 1
+            CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+            
+            local relPath = getRelativePath(obj)
+            local data = {
+                Name = obj.Name,
+                ClassName = obj.ClassName,
+                RelativePath = relPath,
+                Depth = #relPath,
+                Properties = {}
+            }
+            
+            -- Ekstraksi Properti Dasar Universal
+            pcall(function() data.Properties.TextureId = obj.TextureId end)
+            pcall(function() data.Properties.Texture = obj.Texture end)
+            pcall(function() data.Properties.Image = obj.Image end)
+            pcall(function() data.Properties.Face = obj.Face.Name end)
+            pcall(function() data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255} end)
+            
+            -- Perekaman Struktur Model (Anti-Aneh Lapisan Primer)
+            if obj:IsA("Model") then
+                pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
+            end
+            
+            -- Perekaman Fisik Geometri Part
+            if obj:IsA("BasePart") then
+                data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                data.Properties.CFrame = {obj.CFrame:GetComponents()}
+                data.Properties.Material = obj.Material.Name
+                data.Properties.Transparency = obj.Transparency
+                data.Properties.Anchored = obj.Anchored
+                data.Properties.CanCollide = obj.CanCollide
+                
+                -- Lapisan Rekam Skala Khusus Mesh/Union
+                if obj:IsA("MeshPart") then
+                    pcall(function() data.Properties.MeshId = obj.MeshId end)
+                    pcall(function() data.Properties.Size0 = {obj.Size.X, obj.Size.Y, obj.Size.Z} end) -- Rekam rasio asli
+                elseif obj:IsA("UnionOperation") then
+                    pcall(function() data.Properties.AssetId = obj.AssetId end)
                 end
             end
-        end)
-        if not success then warn("Gagal men-scan service: " .. service.Name .. " | Error: " .. tostring(err)) end
+            
+            table.insert(SaveData, data)
+            if count % 250 == 0 then task.wait() end
+        end
     end
     
     writefile(fileName, HttpService:JSONEncode(SaveData))
@@ -237,24 +224,17 @@ _G.UpdatePasteList = function()
                     
                     table.sort(loadedData, function(a, b) return (a.Depth or 0) < (b.Depth or 0) end)
                     
-                    -- Membuat folder induk utama hasil paste di Workspace
                     local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName) or Instance.new("Folder", workspace)
                     MasterFolder.Name = "Paste_" .. cleanName
                     
                     local function findOrCreateParent(relativePath)
                         local currentParent = MasterFolder
-                        for i, pathInfo in ipairs(relativePath) do
-                            -- Di index awal, sesuaikan nama root folder (misal Workspace menjadi Workspace_Paste)
-                            local searchName = pathInfo.Name
-                            if i == 1 then
-                                searchName = pathInfo.Name .. "_Folder"
-                            end
-                            
-                            local found = currentParent:FindFirstChild(searchName)
+                        for _, pathInfo in ipairs(relativePath) do
+                            local found = currentParent:FindFirstChild(pathInfo.Name)
                             if not found then
                                 pcall(function()
-                                    found = Instance.new("Folder") -- Menggunakan folder reguler agar aman di workspace
-                                    found.Name = searchName
+                                    found = Instance.new(pathInfo.ClassName)
+                                    found.Name = pathInfo.Name
                                     found.Parent = currentParent
                                 end)
                                 if not found then found = currentParent end
@@ -269,9 +249,6 @@ _G.UpdatePasteList = function()
                     
                     for _, data in pairs(loadedData) do
                         pcall(function()
-                            -- Lewati jika root service itu sendiri yang mau di-paste langsung
-                            if #data.RelativePath == 0 then return end
-                            
                             local targetParent = findOrCreateParent(data.RelativePath)
                             if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then return end
                             
@@ -283,33 +260,28 @@ _G.UpdatePasteList = function()
                             
                             -- LAPISAN REKONSTRUKSI BENTUK (ANTI-ANEH):
                             if data.ClassName == "MeshPart" or (props.MeshId and props.MeshId ~= "") then
+                                -- Lapisan 1 Fallback: Gunakan SpecialMesh di dalam Part reguler
                                 newObj = Instance.new("Part")
                                 local specialMesh = Instance.new("SpecialMesh")
                                 specialMesh.MeshType = Enum.MeshType.FileMesh
                                 specialMesh.MeshId = props.MeshId or ""
                                 specialMesh.TextureId = props.TextureId or ""
+                                
+                                -- Lapisan 2 Kompensasi Skala: Mengunci distorsi bentuk mesh agar proporsional
                                 if props.Size0 and props.Size then
                                     specialMesh.Scale = Vector3.new(1, 1, 1)
                                 end
                                 specialMesh.Parent = newObj
                             elseif data.ClassName == "UnionOperation" and (props.AssetId and props.AssetId ~= "") then
+                                -- Lapisan Fallback Union korup
                                 newObj = Instance.new("Part")
                                 local blockMesh = Instance.new("BlockMesh")
                                 blockMesh.Parent = newObj
                             else
-                                -- Cegah crash akibat membuat objek terlarang/locked classes
-                                local successInstance = pcall(function()
-                                    newObj = Instance.new(data.ClassName)
-                                end)
-                                if not successInstance or not newObj then
-                                    newObj = Instance.new("Folder") -- fallback jika ClassName dilarang
-                                    newObj.Name = data.Name .. " (" .. data.ClassName .. ")"
-                                end
+                                newObj = Instance.new(data.ClassName)
                             end
                             
-                            if newObj.Name == "" or newObj.Name == data.ClassName then
-                                newObj.Name = data.Name
-                            end
+                            newObj.Name = data.Name
                             
                             -- Mengembalikan Posisi Fisik yang Akurat
                             if newObj:IsA("BasePart") and props.CFrame then
@@ -321,8 +293,10 @@ _G.UpdatePasteList = function()
                                 newObj.Anchored = props.Anchored
                                 newObj.CanCollide = props.CanCollide
                             elseif newObj:IsA("Model") and props.WorldPivot then
+                                -- Lapisan Pemulihan Orientasi Model Group
                                 pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
                             else
+                                -- Apply properti pelengkap objek insert bebas jenis
                                 pcall(function() newObj.TextureId = props.TextureId end)
                                 pcall(function() newObj.Texture = props.Texture end)
                                 pcall(function() newObj.Image = props.Image end)
