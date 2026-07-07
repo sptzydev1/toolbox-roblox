@@ -150,15 +150,12 @@ local function getRelativePath(obj)
     return path
 end
 
--- 1. PROSES COPY DEEP HIERARCHY
+-- 1. PROSES COPY DENGAN ANIMASI ANIMASI NAMA OBJEK
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
     end
-
-    CopyButton.Text = "⌛ SCANNING WORKSPACE..."
-    task.wait(0.1)
 
     local SaveData = {}
     local count = 0
@@ -166,12 +163,18 @@ CopyButton.MouseButton1Click:Connect(function()
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    for _, obj in pairs(TargetFolder:GetDescendants()) do
+    -- Mengumpulkan target scan terlebih dahulu
+    local objectsToScan = TargetFolder:GetDescendants()
+    
+    for _, obj in pairs(objectsToScan) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") then
                 count = count + 1
-                local relPath = getRelativePath(obj)
                 
+                -- ANIMASI LIVE TEXT: Menampilkan nama objek yang sedang di-copy pada tombol
+                CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+                
+                local relPath = getRelativePath(obj)
                 local data = {
                     Name = obj.Name,
                     ClassName = obj.ClassName,
@@ -188,7 +191,6 @@ CopyButton.MouseButton1Click:Connect(function()
                     data.Anchored = obj.Anchored
                     data.CanCollide = obj.CanCollide
                     
-                    -- FIX: Menyimpan data ID MeshPart & Union secara aman
                     if obj:IsA("MeshPart") then
                         data.MeshId = obj.MeshId
                         data.TextureId = obj.TextureId
@@ -198,20 +200,20 @@ CopyButton.MouseButton1Click:Connect(function()
                 end
                 table.insert(SaveData, data)
                 
-                -- Anti Crash untuk Map Besar
-                if count % 500 == 0 then task.wait() end
+                -- Setiap 250 objek diberi jeda mikro agar UI sempat ter-render & game anti-freeze
+                if count % 250 == 0 then task.wait() end
             end
         end
     end
     
     writefile(fileName, HttpService:JSONEncode(SaveData))
-    CopyButton.Text = "💾 COPIED: " .. count
-    task.wait(1.5)
+    CopyButton.Text = "💾 COPIED: " .. count .. " OBJS"
+    task.wait(2)
     CopyButton.Text = "COPYY OM"
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN
+-- 2. PROSES PASTE DENGAN ANIMASI ANIMASI NAMA OBJEK
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -241,14 +243,12 @@ _G.UpdatePasteList = function()
             BtnCorner.Parent = FileSelectBtn
             
             FileSelectBtn.MouseButton1Click:Connect(function()
-                FileSelectBtn.Text = " ⌛ LOADING..."
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 
                 local success, err = pcall(function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
-                    -- Urutkan berdasarkan kedalaman hirarki (Bapak dulu baru anak)
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -269,7 +269,7 @@ _G.UpdatePasteList = function()
                                     if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
                                         found = Instance.new(pathInfo.ClassName)
                                     else
-                                        found = Instance.new("Folder") -- Fallback aman jika class tak dikenal
+                                        found = Instance.new("Folder")
                                     end
                                     found.Name = pathInfo.Name
                                     found.Parent = currentParent
@@ -281,6 +281,8 @@ _G.UpdatePasteList = function()
                     end
                     
                     local pasteCount = 0
+                    local totalObjs = #loadedData
+                    
                     for _, data in pairs(loadedData) do
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
@@ -290,8 +292,11 @@ _G.UpdatePasteList = function()
                                 return
                             end
                             
+                            -- ANIMASI LIVE TEXT: Menampilkan nama objek yang sedang dibentuk ulang pada tombol list
+                            pasteCount = pasteCount + 1
+                            FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
+                            
                             local newObj
-                            -- FIX: Penanganan spesial agar MeshPart tidak error saat dibuat lewat Instance.new
                             if data.ClassName == "MeshPart" or (data.MeshId and data.MeshId ~= "") then
                                 newObj = Instance.new("Part")
                                 local specialMesh = Instance.new("SpecialMesh")
@@ -302,7 +307,7 @@ _G.UpdatePasteList = function()
                             elseif data.ClassName == "Folder" or data.ClassName == "Model" or data.ClassName == "Part" or data.ClassName == "WedgePart" or data.ClassName == "CornerWedgePart" or data.ClassName == "TrussPart" then
                                 newObj = Instance.new(data.ClassName)
                             else
-                                newObj = Instance.new("Part") -- Fallback untuk jenis part lainnya
+                                newObj = Instance.new("Part")
                             end
                             
                             newObj.Name = data.Name
@@ -318,23 +323,22 @@ _G.UpdatePasteList = function()
                             end
                             
                             newObj.Parent = targetParent
-                            pasteCount = pasteCount + 1
                             
-                            if pasteCount % 500 == 0 then task.wait() end
+                            if pasteCount % 250 == 0 then task.wait() end
                         end)
                     end
                 end)
                 
                 if success then
-                    FileSelectBtn.Text = " ✅ V2 PASTE DONE!"
+                    FileSelectBtn.Text = " ✅ PASTE SUCCESSFUL!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
                 else
-                    FileSelectBtn.Text = " ❌ ERROR LAYER!"
+                    FileSelectBtn.Text = " ❌ ERROR OCCURRED!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
                     warn(err)
                 end
                 
-                task.wait(1.5)
+                task.wait(2)
                 FileSelectBtn.Text = " 📄 " .. cleanName
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             end)
