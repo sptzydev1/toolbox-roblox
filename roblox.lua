@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Mouse = LocalPlayer:GetMouse()
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
@@ -17,6 +18,11 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
+
+-- Daftar Hitam Objek yang di-klik oleh user agar TIDAK ikut di-copy
+local BlacklistObjects = {}
+local SelectionHighlightMode = false
+local HighlightVisuals = {}
 
 -- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
@@ -113,6 +119,22 @@ local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
 
+-- Tombol Konfirmasi Copy setelah seleksi (Disembunyikan di awal)
+local ConfirmButton = Instance.new("TextButton")
+ConfirmButton.Size = UDim2.new(0, 250, 0, 40)
+ConfirmButton.Position = UDim2.new(0.5, -125, 0.85, 0)
+ConfirmButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
+ConfirmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfirmButton.Text = "🟩 [ SELESAI & MULAI COPY ]"
+ConfirmButton.Font = Enum.Font.SourceSansBold
+ConfirmButton.TextSize = 14
+ConfirmButton.Visible = false
+ConfirmButton.Parent = ScreenGui
+
+local ConfirmCorner = Instance.new("UICorner")
+ConfirmCorner.CornerRadius = UDim.new(0, 8)
+ConfirmCorner.Parent = ConfirmButton
+
 
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
@@ -150,7 +172,6 @@ local function getRelativePath(obj)
     return path
 end
 
--- Fungsi cek apakah objek adalah bagian dari karakter player manapun
 local function isAPlayerCharacter(obj)
     for _, p in pairs(Players:GetPlayers()) do
         if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then
@@ -160,13 +181,76 @@ local function isAPlayerCharacter(obj)
     return false
 end
 
--- 1. PROSES COPY DENGAN FIX PROTEKSI MESH & FILTER PLAYER
+-- Fungsi mencari Model/Folder teratas saat pohon di-klik, agar satu pohon utuh ter-blacklist
+local function getTopLevelTarget(obj)
+    if not obj or obj == workspace or obj == game then return nil end
+    local current = obj
+    while current.Parent and current.Parent ~= workspace and (current.Parent:IsA("Model") or current.Parent:IsA("Folder")) do
+        current = current.Parent
+    end
+    return current
+end
+
+-- LOGIKA KLIK MOUSE UNTUK MENG-CLOSE (BLACKLIST) POHON / OBJEK
+Mouse.Button1Down:Connect(function()
+    if not SelectionHighlightMode then return end
+    local target = Mouse.Target
+    if target and target:IsDescendantOf(workspace) then
+        local topObj = getTopLevelTarget(target) or target
+        
+        if not isAPlayerCharacter(topObj) and not topObj:IsA("Terrain") and not topObj:IsA("Camera") then
+            if not BlacklistObjects[topObj] then
+                -- Masukkan ke blacklist & Beri efek Highlight Merah
+                BlacklistObjects[topObj] = true
+                
+                local highlight = Instance.new("Highlight")
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                highlight.FillTransparency = 0.5
+                highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+                highlight.Parent = topObj
+                table.insert(HighlightVisuals, highlight)
+            else
+                -- Jika diklik lagi, batalkan blacklist (Remove dari daftar hitam)
+                BlacklistObjects[topObj] = nil
+                for i, hl in ipairs(HighlightVisuals) do
+                    if hl.Parent == topObj then
+                        hl:Destroy()
+                        table.remove(HighlightVisuals, i)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- 1. TAHAP AWAL: AKTIFKAN SELEKSI POHON VIA MOUSE
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
     end
 
+    if not SelectionHighlightMode then
+        SelectionHighlightMode = true
+        BlacklistObjects = {}
+        HighlightVisuals = {}
+        
+        CopyButton.Text = "🔴 KLIK POHON DI MAP UTK CLOSE"
+        CopyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        ConfirmButton.Visible = true
+    end
+end)
+
+-- 2. TAHAP AKHIR: PROSES COPY SETELAH SELESAI PILIH
+ConfirmButton.MouseButton1Click:Connect(function()
+    SelectionHighlightMode = false
+    ConfirmButton.Visible = false
+    CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
+    
+    -- Hapus semua efek visual merah sebelum proses dumping data file
+    for _, hl in pairs(HighlightVisuals) do hl:Destroy() end
+    
     local SaveData = {}
     local count = 0
     
@@ -177,8 +261,18 @@ CopyButton.MouseButton1Click:Connect(function()
     
     for _, obj in pairs(objectsToScan) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            -- FILTER DIPERKETAT: Memastikan objek bukan kamera, terrain, ataupun bagian tubuh player
-            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
+            -- LOGIKA CHECK EXTRA: Memastikan objek atau bapak/induknya TIDAK ADA di dalam daftar BlacklistObjects!
+            local isBlacklisted = false
+            local currentCheck = obj
+            while currentCheck and currentCheck ~= workspace do
+                if BlacklistObjects[currentCheck] then
+                    isBlacklisted = true
+                    break
+                end
+                currentCheck = currentCheck.Parent
+            end
+            
+            if not isBlacklisted and not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
                 
                 CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
@@ -200,7 +294,6 @@ CopyButton.MouseButton1Click:Connect(function()
                     data.Anchored = obj.Anchored
                     data.CanCollide = obj.CanCollide
                     
-                    -- FIX PROTEKSI: Menggunakan pcall agar jika properti MeshId/TextureId tidak ada, script tidak akan crash/stuck!
                     if obj:IsA("MeshPart") then
                         pcall(function() data.MeshId = obj.MeshId end)
                         pcall(function() data.TextureId = obj.TextureId end)
@@ -222,7 +315,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN
+-- 3. PROSES PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
