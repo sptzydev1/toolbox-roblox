@@ -17,6 +17,7 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
+local IsInvisible = false -- Status awal invisible
 
 -- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
@@ -26,8 +27,8 @@ ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 270)
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -135)
+MainFrame.Size = UDim2.new(0, 230, 0, 300) -- Ukuran Y dinaikkan menjadi 300 untuk menampung tombol baru
+MainFrame.Position = UDim2.new(0.5, -115, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -55,8 +56,8 @@ Title.Parent = MainFrame
 
 -- Tombol Copy
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 45)
+CopyButton.Size = UDim2.new(0, 206, 0, 32)
+CopyButton.Position = UDim2.new(0, 12, 0, 42)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
@@ -68,10 +69,25 @@ local CopyButtonCorner = Instance.new("UICorner")
 CopyButtonCorner.CornerRadius = UDim.new(0, 6)
 CopyButtonCorner.Parent = CopyButton
 
+-- Tombol Invisible Toggle (On/Off)
+local InvisibleButton = Instance.new("TextButton")
+InvisibleButton.Size = UDim2.new(0, 206, 0, 26)
+InvisibleButton.Position = UDim2.new(0, 12, 0, 78)
+InvisibleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+InvisibleButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+InvisibleButton.Text = "👻 Invisible: OFF"
+InvisibleButton.Font = Enum.Font.SourceSansSemibold
+InvisibleButton.TextSize = 12
+InvisibleButton.Parent = MainFrame
+
+local InvisibleCorner = Instance.new("UICorner")
+InvisibleCorner.CornerRadius = UDim.new(0, 6)
+InvisibleCorner.Parent = InvisibleButton
+
 -- Label Penanda List
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 90)
+ListLabel.Position = UDim2.new(0, 12, 0, 110) -- Disesuaikan posisinya turun ke bawah
 ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -83,7 +99,7 @@ ListLabel.Parent = MainFrame
 -- Scrolling Frame
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 110)
+ListScroll.Position = UDim2.new(0, 12, 0, 132) -- Disesuaikan posisinya turun ke bawah
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -101,7 +117,7 @@ ListLayout.Parent = ListScroll
 -- Tombol Refresh List
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 235)
+RefreshButton.Position = UDim2.new(0, 12, 0, 265) -- Disesuaikan posisinya turun ke bawah
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -135,6 +151,53 @@ MainFrame.InputChanged:Connect(function(input)
 end)
 UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
+end)
+
+
+-- [[ LOGIKA INVISIBLE AVATAR LOCAL ]]
+local function setAvatarVisibility(visible)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local transparencyValue = visible and 0 or 1
+    
+    -- Mengatur visibilitas bagian tubuh (Parts) dan Decal (Wajah, Tato, dsb)
+    for _, obj in pairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name ~= "HumanoidRootPart" then
+            obj.Transparency = transparencyValue
+        elseif obj:IsA("Decal") then
+            obj.Transparency = transparencyValue
+        end
+    end
+    
+    -- Menyembunyikan nama di atas kepala (Nametag / HealthBar)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.DisplayDistanceType = visible and Enum.HumanoidDisplayDistanceType.Viewer or Enum.HumanoidDisplayDistanceType.None
+    end
+end
+
+-- Memicu fungsi invisible ulang ketika player mati & respawn kembali
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if IsInvisible then
+        task.wait(0.5) -- Menunggu karakter selesai load sempurna
+        setAvatarVisibility(false)
+    end
+end)
+
+InvisibleButton.MouseButton1Click:Connect(function()
+    IsInvisible = not IsInvisible
+    if IsInvisible then
+        setAvatarVisibility(false)
+        InvisibleButton.Text = "✨ Invisible: ON"
+        InvisibleButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+        InvisibleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    else
+        setAvatarVisibility(true)
+        InvisibleButton.Text = "👻 Invisible: OFF"
+        InvisibleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        InvisibleButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
 end)
 
 
@@ -224,8 +287,9 @@ end)
 
 -- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
+    -- Membersihkan semua item di dalam list (baik TextButton maupun Frame kontainer baru)
     for _, child in pairs(ListScroll:GetChildren()) do
-        if child:IsA("TextButton") then child:Destroy() end
+        if child:IsA("TextButton") or child:IsA("Frame") then child:Destroy() end
     end
     
     if not listfiles then return end
@@ -237,19 +301,56 @@ _G.UpdatePasteList = function()
             anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
+            -- Frame Kontainer Utama per Baris List
+            local ItemFrame = Instance.new("Frame")
+            ItemFrame.Size = UDim2.new(1, -6, 0, 26)
+            ItemFrame.BackgroundTransparency = 1
+            ItemFrame.Parent = ListScroll
+            
+            -- Tombol Pilih File / Paste (Ukuran dikurangi di kanan untuk tempat tombol delete)
             local FileSelectBtn = Instance.new("TextButton")
-            FileSelectBtn.Size = UDim2.new(1, -6, 0, 26)
+            FileSelectBtn.Size = UDim2.new(1, -28, 1, 0)
+            FileSelectBtn.Position = UDim2.new(0, 0, 0, 0)
             FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
             FileSelectBtn.Text = " 📄 " .. cleanName
             FileSelectBtn.Font = Enum.Font.SourceSansSemibold
             FileSelectBtn.TextSize = 11
             FileSelectBtn.TextXAlignment = Enum.TextXAlignment.Left
-            FileSelectBtn.Parent = ListScroll
+            FileSelectBtn.Parent = ItemFrame
             
             local BtnCorner = Instance.new("UICorner")
             BtnCorner.CornerRadius = UDim.new(0, 4)
             BtnCorner.Parent = FileSelectBtn
+            
+            -- Tombol Delete ❌ di Sudut Kanan Berdampingan
+            local DeleteBtn = Instance.new("TextButton")
+            DeleteBtn.Size = UDim2.new(0, 24, 1, 0)
+            DeleteBtn.Position = UDim2.new(1, -24, 0, 0)
+            DeleteBtn.BackgroundColor3 = Color3.fromRGB(50, 20, 20)
+            DeleteBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+            DeleteBtn.Text = "❌"
+            DeleteBtn.Font = Enum.Font.SourceSansBold
+            DeleteBtn.TextSize = 11
+            DeleteBtn.Parent = ItemFrame
+            
+            local DelCorner = Instance.new("UICorner")
+            DelCorner.CornerRadius = UDim.new(0, 4)
+            DelCorner.Parent = DeleteBtn
+            
+            -- Fitur Aksi Hapus File
+            DeleteBtn.MouseButton1Click:Connect(function()
+                if delfile then
+                    pcall(function()
+                        delfile(file)
+                    end)
+                    _G.UpdatePasteList()
+                else
+                    DeleteBtn.Text = "⚠️"
+                    task.wait(1)
+                    DeleteBtn.Text = "❌"
+                end
+            end)
             
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
