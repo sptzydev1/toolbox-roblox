@@ -150,16 +150,42 @@ local function getRelativePath(obj)
     return path
 end
 
+-- Fungsi cek apakah objek adalah bagian dari karakter player atau Morph Player
 local function isAPlayerCharacter(obj)
+    -- Deteksi dasar karakter utama player
     for _, p in pairs(Players:GetPlayers()) do
         if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then
             return true
         end
     end
+    
+    -- LOGIKA MORPH: Mendeteksi apakah model ini bertindak sebagai morph yang melacak pergerakan/posisi player
+    if obj:IsA("Model") or obj:IsA("BasePart") then
+        local rootPart = obj:IsA("Model") and obj.PrimaryPart or (obj:IsA("BasePart") and obj or nil)
+        if rootPart then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local pRoot = p.Character.HumanoidRootPart
+                    -- Jika objek sangat dekat secara real-time dan bergerak mengikuti root player, anggap sebagai Morph Player
+                    local distance = (rootPart.Position - pRoot.Position).Magnitude
+                    if distance < 6 and rootPart.Anchored == false then
+                        return true
+                    end
+                end
+            end
+        end
+    end
     return false
 end
 
--- 1. PROSES COPY MENYELURUH (TERMASUK SEMUA INSERT DI DALAMNYA)
+-- Jenis support/child tambahan yang ingin ikut di-copy
+local AllowedSupportClasses = {
+    ["Texture"] = true, ["Decal"] = true, ["SurfaceAppearance"] = true, 
+    ["SpecialMesh"] = true, ["BlockMesh"] = true, ["CylinderMesh"] = true,
+    ["ParticleEmitter"] = true, ["PointLight"] = true, ["SpotLight"] = true, ["SurfaceLight"] = true
+}
+
+-- 1. PROSES COPY DENGAN FIX PROTEKSI MESH, FILTER PLAYER MORPH, & SUPPORT COPIER
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -175,49 +201,59 @@ CopyButton.MouseButton1Click:Connect(function()
     local objectsToScan = TargetFolder:GetDescendants()
     
     for _, obj in pairs(objectsToScan) do
-        -- PERUBAHAN UTAMA: Membuka semua filter tipe kelas agar insert jenis apa saja ikut tercopy bebas
-        if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
-            count = count + 1
-            
-            CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
-            
-            local relPath = getRelativePath(obj)
-            local data = {
-                Name = obj.Name,
-                ClassName = obj.ClassName,
-                RelativePath = relPath,
-                Depth = #relPath,
-                Properties = {}
-            }
-            
-            -- Menyimpan properti dasar secara dinamis berdasarkan ketersediaannya
-            pcall(function() data.Properties.TextureId = obj.TextureId end)
-            pcall(function() data.Properties.Texture = obj.Texture end)
-            pcall(function() data.Properties.Image = obj.Image end)
-            pcall(function() data.Properties.SoundId = obj.SoundId end)
-            pcall(function() data.Properties.Volume = obj.Volume end)
-            pcall(function() data.Properties.Face = obj.Face.Name end)
-            pcall(function() data.Properties.Enabled = obj.Enabled end)
-            pcall(function() data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255} end)
-            
-            if obj:IsA("BasePart") then
-                data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                data.Properties.CFrame = {obj.CFrame:GetComponents()}
-                data.Properties.Material = obj.Material.Name
-                data.Properties.Transparency = obj.Transparency
-                data.Properties.Anchored = obj.Anchored
-                data.Properties.CanCollide = obj.CanCollide
+        -- Mendukung folder/model/part UTAMA, serta support objek yang terdaftar di dalam list filter
+        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
+            -- FILTER DIPERKETAT: Memastikan objek bukan kamera, terrain, ataupun bagian tubuh/morph player
+            if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
+                count = count + 1
                 
-                if obj:IsA("MeshPart") then
-                    pcall(function() data.Properties.MeshId = obj.MeshId end)
-                elseif obj:IsA("UnionOperation") then
-                    pcall(function() data.Properties.AssetId = obj.AssetId end)
+                CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+                
+                local relPath = getRelativePath(obj)
+                local data = {
+                    Name = obj.Name,
+                    ClassName = obj.ClassName,
+                    RelativePath = relPath,
+                    Depth = #relPath
+                }
+                
+                -- Jika objek dasar part, ambil data transformasinya
+                if obj:IsA("BasePart") then
+                    data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                    data.CFrame = {obj.CFrame:GetComponents()}
+                    data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
+                    data.Material = obj.Material.Name
+                    data.Transparency = obj.Transparency
+                    data.Anchored = obj.Anchored
+                    data.CanCollide = obj.CanCollide
+                    
+                    if obj:IsA("MeshPart") then
+                        pcall(function() data.MeshId = obj.MeshId end)
+                        pcall(function() data.TextureId = obj.TextureId end)
+                    elseif obj:IsA("UnionOperation") then
+                        pcall(function() data.AssetId = obj.AssetId end)
+                    end
+                
+                -- LOGIKA UTAMA: Menyimpan data spesifik dari objek Support/Texture/Decal/Mesh/Lighting
+                elseif AllowedSupportClasses[obj.ClassName] then
+                    data.Properties = {}
+                    pcall(function() if obj.Texture then data.Properties.Texture = obj.Texture end end)
+                    pcall(function() if obj.TextureId then data.Properties.TextureId = obj.TextureId end end)
+                    pcall(function() if obj.MeshId then data.Properties.MeshId = obj.MeshId end end)
+                    pcall(function() if obj.MeshType then data.Properties.MeshType = obj.MeshType.Name end end)
+                    pcall(function() if obj.Face then data.Properties.Face = obj.Face.Name end end)
+                    pcall(function() if obj.Color then data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255} end end)
+                    pcall(function() if obj.Color3 then data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end end)
+                    pcall(function() if obj.Transparency then data.Properties.Transparency = obj.Transparency end end)
+                    pcall(function() if obj.Brightness then data.Properties.Brightness = obj.Brightness end end)
+                    pcall(function() if obj.Range then data.Properties.Range = obj.Range end end)
+                    pcall(function() if obj.Shadows then data.Properties.Shadows = obj.Shadows end end)
                 end
+                
+                table.insert(SaveData, data)
+                
+                if count % 250 == 0 then task.wait() end
             end
-            
-            table.insert(SaveData, data)
-            
-            if count % 250 == 0 then task.wait() end
         end
     end
     
@@ -228,7 +264,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES PASTE MENYELURUH BERDASARKAN HIRARKI KEDALAMAN
+-- 2. PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -264,7 +300,7 @@ _G.UpdatePasteList = function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
-                    -- Urutkan kedalaman agar induk terbuat lebih dahulu dibanding isi (children) didalamnya
+                    -- Urutkan berdasarkan kedalaman hierarki (Parent dibuat terlebih dahulu dibanding child)
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -282,13 +318,16 @@ _G.UpdatePasteList = function()
                             local found = currentParent:FindFirstChild(pathInfo.Name)
                             if not found then
                                 pcall(function()
-                                    found = Instance.new(pathInfo.ClassName)
+                                    if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
+                                        found = Instance.new(pathInfo.ClassName)
+                                    elseif pathInfo.ClassName == "MeshPart" or pathInfo.ClassName == "Part" or pathInfo.ClassName == "WedgePart" or pathInfo.ClassName == "CornerWedgePart" or pathInfo.ClassName == "TrussPart" then
+                                        found = Instance.new("Part") -- Fallback container sementara jika bertindak sebagai parent part kosong
+                                    else
+                                        found = Instance.new("Folder")
+                                    end
                                     found.Name = pathInfo.Name
                                     found.Parent = currentParent
                                 end)
-                                if not found then
-                                    found = currentParent -- Fallback keamanan struktur jika gagal instansiasi
-                                end
                             end
                             currentParent = found
                         end
@@ -302,8 +341,9 @@ _G.UpdatePasteList = function()
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
                             
-                            -- Mengizinkan pembuatan ulang insert meskipun induknya memiliki nama yang sama
-                            if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then
+                            -- Cek duplikasi untuk container utama
+                            local existingObj = targetParent:FindFirstChild(data.Name)
+                            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
                                 return
                             end
                             
@@ -311,42 +351,48 @@ _G.UpdatePasteList = function()
                             FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
                             
                             local newObj
-                            local props = data.Properties or {}
                             
-                            -- Deteksi Spesial Konversi MeshPart
-                            if data.ClassName == "MeshPart" or (props.MeshId and props.MeshId ~= "") then
+                            -- Pengecekan pembuatan Instansi Objek
+                            if AllowedSupportClasses[data.ClassName] then
+                                newObj = Instance.new(data.ClassName)
+                                -- Paste properti data support (Texture, Decal, dsb)
+                                if data.Properties then
+                                    pcall(function() if data.Properties.Texture then newObj.Texture = data.Properties.Texture end end)
+                                    pcall(function() if data.Properties.TextureId then newObj.TextureId = data.Properties.TextureId end end)
+                                    pcall(function() if data.Properties.MeshId then newObj.MeshId = data.Properties.MeshId end end)
+                                    pcall(function() if data.Properties.MeshType then newObj.MeshType = Enum.MeshType[data.Properties.MeshType] end end)
+                                    pcall(function() if data.Properties.Face then newObj.Face = Enum.NormalId[data.Properties.Face] end end)
+                                    pcall(function() if data.Properties.Transparency then newObj.Transparency = data.Properties.Transparency end end)
+                                    pcall(function() if data.Properties.Brightness then newObj.Brightness = data.Properties.Brightness end end)
+                                    pcall(function() if data.Properties.Range then newObj.Range = data.Properties.Range end end)
+                                    pcall(function() if data.Properties.Shadows then newObj.Shadows = data.Properties.Shadows end end)
+                                    pcall(function() if data.Properties.Color then newObj.Color = Color3.fromRGB(unpack(data.Properties.Color)) end end)
+                                    pcall(function() if data.Properties.Color3 then newObj.Color3 = Color3.fromRGB(unpack(data.Properties.Color3)) end end)
+                                end
+                            elseif data.ClassName == "MeshPart" or (data.MeshId and data.MeshId ~= "") then
                                 newObj = Instance.new("Part")
                                 local specialMesh = Instance.new("SpecialMesh")
                                 specialMesh.MeshType = Enum.MeshType.FileMesh
-                                specialMesh.MeshId = props.MeshId or ""
-                                specialMesh.TextureId = props.TextureId or ""
+                                specialMesh.MeshId = data.MeshId or ""
+                                specialMesh.TextureId = data.TextureId or ""
                                 specialMesh.Parent = newObj
-                            else
-                                -- Membuat instansiasi apa saja jenis objek insert-nya secara bebas (Universal Creator)
+                            elseif data.ClassName == "Folder" or data.ClassName == "Model" or data.ClassName == "Part" or data.ClassName == "WedgePart" or data.ClassName == "CornerWedgePart" or data.ClassName == "TrussPart" then
                                 newObj = Instance.new(data.ClassName)
+                            else
+                                newObj = Instance.new("Part")
                             end
                             
                             newObj.Name = data.Name
                             
-                            -- Memasang ulang seluruh isi properti yang tersimpan secara dinamis
-                            if newObj:IsA("BasePart") and props.CFrame then
-                                newObj.Size = Vector3.new(props.Size[1], props.Size[2], props.Size[3])
-                                newObj.CFrame = CFrame.new(unpack(props.CFrame))
-                                newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3])
-                                pcall(function() newObj.Material = Enum.Material[props.Material] end)
-                                newObj.Transparency = props.Transparency
-                                newObj.Anchored = props.Anchored
-                                newObj.CanCollide = props.CanCollide
-                            else
-                                -- Pasang properti non-part (Decal, Sound, Light, dll)
-                                pcall(function() newObj.TextureId = props.TextureId end)
-                                pcall(function() newObj.Texture = props.Texture end)
-                                pcall(function() newObj.Image = props.Image end)
-                                pcall(function() newObj.SoundId = props.SoundId end)
-                                pcall(function() newObj.Volume = props.Volume end)
-                                pcall(function() newObj.Enabled = props.Enabled end)
-                                pcall(function() newObj.Face = Enum.NormalId[props.Face] end)
-                                pcall(function() newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3]) end)
+                            -- Mengatur properti transformasi fisik jika dia adalah BasePart
+                            if data.CFrame and newObj:IsA("BasePart") then
+                                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
+                                newObj.CFrame = CFrame.new(unpack(data.CFrame))
+                                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
+                                pcall(function() newObj.Material = Enum.Material[data.Material] end)
+                                newObj.Transparency = data.Transparency
+                                newObj.Anchored = data.Anchored
+                                newObj.CanCollide = data.CanCollide
                             end
                             
                             newObj.Parent = targetParent
