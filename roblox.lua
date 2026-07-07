@@ -17,26 +17,27 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 
--- [[ DAFTAR SERVICE YANG BISA DICOPY CLIENT (ALA DEX) ]]
+-- [[ DAFTAR SERVICE YANG BISA DICOPY CLIENT (FULL DEX LOOKUP) ]]
 local TargetServices = {
     game:GetService("Workspace"),
     game:GetService("ReplicatedStorage"),
     game:GetService("Lighting"),
     game:GetService("StarterGui"),
     game:GetService("StarterPlayer"),
+    game:GetService("StarterPack"),
     game:GetService("MaterialService")
 }
 
--- [[ CREATING GUI (Premium Curved UI V2) ]]
+-- [[ CREATING GUI (Premium Curved UI V3) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyCopyGuiV2"
+ScreenGui.Name = "SpyzyyCopyGuiV3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 270)
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -135)
+MainFrame.Size = UDim2.new(0, 240, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -120, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -55,14 +56,14 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 DEX MULTI-COPY V2 🚀"
+Title.Text = "🚀 DEX MULTI-COPY V3 FULL 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 15
+Title.TextSize = 14
 Title.Parent = MainFrame
 
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 206, 0, 35)
+CopyButton.Size = UDim2.new(0, 216, 0, 35)
 CopyButton.Position = UDim2.new(0, 12, 0, 45)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -87,7 +88,7 @@ ListLabel.TextSize = 12
 ListLabel.Parent = MainFrame
 
 local ListScroll = Instance.new("ScrollingFrame")
-ListScroll.Size = UDim2.new(0, 206, 0, 115)
+ListScroll.Size = UDim2.new(0, 216, 0, 120)
 ListScroll.Position = UDim2.new(0, 12, 0, 110)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
@@ -104,8 +105,8 @@ ListLayout.Padding = UDim.new(0, 4)
 ListLayout.Parent = ListScroll
 
 local RefreshButton = Instance.new("TextButton")
-RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 235)
+RefreshButton.Size = UDim2.new(0, 216, 0, 22)
+RefreshButton.Position = UDim2.new(0, 12, 0, 245)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -140,13 +141,13 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- [[ LOGIKA CORE ANTI-LIMIT / LOGIKA ALUR DEX ]]
+
+-- [[ LOGIKA CORE ANTI-LIMIT / ALUR REKONSTRUKSI DEX ]]
 
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
-    -- Mengubah limit pencarian root agar melacak sampai ke level Game Service (Dex Style)
-    while current and current ~= game then
+    while current and current ~= game do
         table.insert(path, 1, {Name = current.Name, ClassName = current.ClassName})
         current = current.Parent
     end
@@ -168,7 +169,10 @@ local AllowedSupportClasses = {
     ["ParticleEmitter"] = true, ["PointLight"] = true, ["SpotLight"] = true, ["SurfaceLight"] = true,
     ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true,
     ["Script"] = true, ["LocalScript"] = true, ["ModuleScript"] = true,
-    ["ScreenGui"] = true, ["Frame"] = true, ["TextLabel"] = true, ["TextButton"] = true, ["ImageLabel"] = true, ["ImageButton"] = true, ["TextBox"] = true, ["UIListLayout"] = true, ["UICorner"] = true, ["UIGridLayout"] = true, ["UIStroke"] = true
+    ["Tool"] = true, ["HopperBin"] = true,
+    ["ScreenGui"] = true, ["Frame"] = true, ["TextLabel"] = true, ["TextButton"] = true, 
+    ["ImageLabel"] = true, ["ImageButton"] = true, ["TextBox"] = true, 
+    ["UIListLayout"] = true, ["UICorner"] = true, ["UIGridLayout"] = true, ["UIStroke"] = true
 }
 
 local function getScriptSourceSafe(scriptObj)
@@ -182,10 +186,10 @@ local function getScriptSourceSafe(scriptObj)
     end
     local success, res = pcall(function() return scriptObj.Source end)
     if success and res and res ~= "" then return res end
-    return "-- [Gagal Mendekompresi Kode Script]"
+    return "-- [Gagal Mendekompresi Kode: Hak akses dibatasi executor / enkripsi server]"
 end
 
--- 1. PROSES COPY MULTI-SERVICE
+-- 1. PROSES COPY SELURUH SERVICE YANG TERSEDIA
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
@@ -198,11 +202,10 @@ CopyButton.MouseButton1Click:Connect(function()
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    -- Memindai seluruh target service yang didaftarkan (Dex Explorer Logic)
     for _, service in ipairs(TargetServices) do
         local objectsToScan = service:GetDescendants()
         
-        -- Daftarkan service induk itu sendiri agar jalurnya valid
+        -- Daftarkan root service
         count = count + 1
         table.insert(SaveData, {
             Name = service.Name,
@@ -214,8 +217,7 @@ CopyButton.MouseButton1Click:Connect(function()
 
         for _, obj in pairs(objectsToScan) do
             if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
-                -- Menghindari GUI buatan kita sendiri agar tidak ikut tercopy
-                if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) and obj.Name ~= "SpyzyyCopyGuiV2" then
+                if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) and obj.Name ~= "SpyzyyCopyGuiV3" then
                     count = count + 1
                     CopyButton.Text = "🔍 [" .. count .. "] " .. string.sub(obj.Name, 1, 10)
                     
@@ -237,7 +239,6 @@ CopyButton.MouseButton1Click:Connect(function()
                         data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
                         data.Properties.Material = obj.Material.Name
                         data.Properties.Transparency = obj.Transparency
-                        data.Properties.Reflectance = obj.Reflectance
                         data.Properties.Anchored = obj.Anchored
                         data.Properties.CanCollide = obj.CanCollide
                         
@@ -251,8 +252,12 @@ CopyButton.MouseButton1Click:Connect(function()
                     elseif obj:IsA("Model") then
                         pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
                         
+                    elseif obj:IsA("Tool") then
+                        pcall(function() data.Properties.RequiresHandle = obj.RequiresHandle end)
+                        pcall(function() data.Properties.CanBeDropped = obj.CanBeDropped end)
+                        pcall(function() data.Properties.ToolTip = obj.ToolTip end)
+
                     elseif obj:IsA("GuiObject") or obj:IsA("LayerCollector") then
-                        -- Menyimpan data UI dasar jika ada di StarterGui
                         pcall(function() data.Properties.Size = {obj.Size.X.Scale, obj.Size.X.Offset, obj.Size.Y.Scale, obj.Size.Y.Offset} end)
                         pcall(function() data.Properties.Position = {obj.Position.X.Scale, obj.Position.X.Offset, obj.Position.Y.Scale, obj.Position.Y.Offset} end)
                         pcall(function() data.Properties.BackgroundColor3 = {obj.BackgroundColor3.r * 255, obj.BackgroundColor3.g * 255, obj.BackgroundColor3.b * 255} end)
@@ -261,10 +266,18 @@ CopyButton.MouseButton1Click:Connect(function()
                             pcall(function() data.Properties.Text = obj.Text end)
                             pcall(function() data.Properties.TextSize = obj.TextSize end)
                         end
+                    
+                    elseif AllowedSupportClasses[obj.ClassName] then
+                        pcall(function() data.Properties.Texture = obj.Texture end)
+                        pcall(function() data.Properties.TextureId = obj.TextureId end)
+                        pcall(function() data.Properties.MeshId = obj.MeshId end)
+                        pcall(function() data.Properties.Enabled = obj.Enabled end)
+                        pcall(function() data.Properties.Transparency = obj.Transparency end)
+                        pcall(function() data.Properties.Color3 = {obj.Color3.r * 255, obj.Color3.g * 255, obj.Color3.b * 255} end)
                     end
                     
                     table.insert(SaveData, data)
-                    if count % 300 == 0 then task.wait() end
+                    if count % 250 == 0 then task.wait() end
                 end
             end
         end
@@ -277,7 +290,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN (MENATA KE MASING-MASING SERVICE UTAMA)
+-- 2. PROSES REFRESH DAN PASTE KEMBALI STRUKTUR DATA
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
@@ -337,11 +350,11 @@ _G.UpdatePasteList = function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
+                    -- Urutkan berdasarkan kedalaman hierarki (Dex Tree Ordering)
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
                     
-                    -- Kontainer utama di Workspace agar folder berstruktur rapi saat diekspor kembali ke Studio
                     local MasterFolder = workspace:FindFirstChild("DexPaste_" .. cleanName)
                     if not MasterFolder then
                         MasterFolder = Instance.new("Folder")
@@ -349,7 +362,6 @@ _G.UpdatePasteList = function()
                         MasterFolder.Parent = workspace
                     end
                     
-                    -- Rekonstruksi struktur jalur data (Dex Logic Alur)
                     local function findOrCreateParent(relativePath)
                         local currentParent = MasterFolder
                         for _, pathInfo in ipairs(relativePath) do
@@ -371,7 +383,7 @@ _G.UpdatePasteList = function()
                     
                     for _, data in pairs(loadedData) do
                         pcall(function()
-                            if data.Depth == 0 then return end -- Abaikan pembuat root service asli data
+                            if data.Depth == 0 then return end -- Root target dilewati
                             
                             local targetParent = findOrCreateParent(data.RelativePath)
                             pasteCount = pasteCount + 1
@@ -383,9 +395,13 @@ _G.UpdatePasteList = function()
                             if data.ClassName == "Script" or data.ClassName == "LocalScript" or data.ClassName == "ModuleScript" then
                                 newObj = Instance.new(data.ClassName)
                                 pcall(function() if props.Source then newObj.Source = props.Source end end)
+                            elseif data.ClassName == "Tool" then
+                                newObj = Instance.new("Tool")
+                                pcall(function() newObj.RequiresHandle = props.RequiresHandle end)
+                                pcall(function() newObj.CanBeDropped = props.CanBeDropped end)
+                                pcall(function() newObj.ToolTip = props.ToolTip end)
                             elseif AllowedSupportClasses[data.ClassName] then
                                 newObj = Instance.new(data.ClassName)
-                                -- Penataan UI khusus jika merupakan GUI item
                                 pcall(function()
                                     if props.Size and newObj:IsA("GuiObject") then newObj.Size = UDim2.new(unpack(props.Size)) end
                                     if props.Position and newObj:IsA("GuiObject") then newObj.Position = UDim2.new(unpack(props.Position)) end
@@ -412,6 +428,10 @@ _G.UpdatePasteList = function()
                                 newObj.Transparency = props.Transparency
                                 newObj.Anchored = props.Anchored
                                 newObj.CanCollide = props.CanCollide
+                            end
+                            
+                            if newObj:IsA("Model") and props.WorldPivot then
+                                pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
                             end
                             
                             newObj.Parent = targetParent
