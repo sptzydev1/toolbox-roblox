@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Mouse = LocalPlayer:GetMouse()
 
--- Mendapatkan Nama Game Secara Otomatis untuk Penamaan File
+-- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
 pcall(function()
     local productInfo = MarketplaceService:GetProductInfo(game.PlaceId)
@@ -19,22 +19,22 @@ end)
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
--- Variabel Penyimpanan Sementara untuk Auto-Hover Scan
+-- Variabel Penyimpanan Sementara untuk Auto-Hover Scan & Grid Preview
 local SelectedObjects = {}
 local IsMultiSelecting = false
-local HighlightStorage = {} -- Untuk efek visual SelectionBox ingame
-local LastHoveredObject = nil -- Mencegah spam deteksi pada objek yang sama
+local HighlightStorage = {} 
+local LastHoveredObject = nil 
 
--- [[ CREATING GUI (Premium Curved UI V4.3 - Auto Hover No-Click) ]]
+-- [[ CREATING GUI (Premium Curved UI V5 - Full Complete Features) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyGridCopyGuiV4_3_Hover"
+ScreenGui.Name = "SpyzyyCopyGuiV5_Final"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 260, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -130, 0.5, -210)
+MainFrame.Size = UDim2.new(0, 260, 0, 430) -- Disesuaikan agar penataan grid 1,2,3 rapi
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -215)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -54,19 +54,19 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 HOVER SCAN MULTI-COPY V4.3 🚀"
+Title.Text = "🚀 COPY MAP BY SPYZYY V5 FULL 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 13
 Title.Parent = MainFrame
 
--- Tombol Copy Map (All)
+-- Fitur Lama: Tombol Copy All Map
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 236, 0, 28)
 CopyButton.Position = UDim2.new(0, 12, 0, 40)
-CopyButton.BackgroundColor3 = Color3.fromRGB(0, 90, 140)
+CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CopyButton.Text = "COPY ALL MAP"
+CopyButton.Text = "COPY ALL MAP (FITUR LAMA)"
 CopyButton.Font = Enum.Font.SourceSansBold
 CopyButton.TextSize = 11
 CopyButton.Parent = MainFrame
@@ -75,7 +75,7 @@ local CopyButtonCorner = Instance.new("UICorner")
 CopyButtonCorner.CornerRadius = UDim.new(0, 6)
 CopyButtonCorner.Parent = CopyButton
 
--- TOMBOL AUTOMATIC HOVER SCAN Toggle
+-- Fitur Baru: Tombol Automatic Hover Scan Toggle (Tanpa Klik)
 local MultiSelectButton = Instance.new("TextButton")
 MultiSelectButton.Size = UDim2.new(0, 236, 0, 32)
 MultiSelectButton.Position = UDim2.new(0, 12, 0, 73)
@@ -95,14 +95,14 @@ local GridLabel = Instance.new("TextLabel")
 GridLabel.Size = UDim2.new(1, -24, 0, 20)
 GridLabel.Position = UDim2.new(0, 12, 0, 110)
 GridLabel.BackgroundTransparency = 1
-GridLabel.Text = "Arahkan Mouse ke Objek (Format 1,2,3):"
+GridLabel.Text = "Hasil Scan Objek (Grid 1,2,3 / 4,5,6):"
 GridLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 GridLabel.TextXAlignment = Enum.TextXAlignment.Left
 GridLabel.Font = Enum.Font.SourceSansGridBold
 GridLabel.TextSize = 11
 GridLabel.Parent = MainFrame
 
--- SCROLLING FRAME UNTUK FOTO (SUSUNAN GRID 1,2,3 / 4,5,6)
+-- SCROLLING FRAME UNTUK DISPLAY FOTO SCAN
 local ImageGridScroll = Instance.new("ScrollingFrame")
 ImageGridScroll.Size = UDim2.new(0, 236, 0, 120)
 ImageGridScroll.Position = UDim2.new(0, 12, 0, 130)
@@ -115,14 +115,14 @@ local GridScrollCorner = Instance.new("UICorner")
 GridScrollCorner.CornerRadius = UDim.new(0, 6)
 GridScrollCorner.Parent = ImageGridScroll
 
--- PENGATUR SUSUNAN OTOMATIS MERAPAT (UIGridLayout 3 Kolom)
+-- Layout Susunan Grid Otomatis (3 Kolom Sejajar Horizontal)
 local GridLayout = Instance.new("UIGridLayout")
 GridLayout.CellSize = UDim2.new(0, 72, 0, 72)
 GridLayout.CellPadding = UDim2.new(0, 6, 0, 6)
 GridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 GridLayout.Parent = ImageGridScroll
 
--- TOMBOL SAVE SELECTION
+-- Tombol Menyimpan Hasil Scan Hover Banyak Objek
 local SaveSelectButton = Instance.new("TextButton")
 SaveSelectButton.Size = UDim2.new(0, 236, 0, 28)
 SaveSelectButton.Position = UDim2.new(0, 12, 0, 255)
@@ -138,10 +138,22 @@ local SaveSelCorner = Instance.new("UICorner")
 SaveSelCorner.CornerRadius = UDim.new(0, 6)
 SaveSelCorner.Parent = SaveSelectButton
 
--- List File Manager (Bagian Bawah)
+-- Label Penanda List File Paste
+local ListLabel = Instance.new("TextLabel")
+ListLabel.Size = UDim2.new(1, -24, 0, 20)
+ListLabel.Position = UDim2.new(0, 12, 0, 285)
+ListLabel.BackgroundTransparency = 1
+ListLabel.Text = "Pilih Data File Untuk Di-paste:"
+ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+ListLabel.TextXAlignment = Enum.TextXAlignment.Left
+ListLabel.Font = Enum.Font.SourceSansSemibold
+ListLabel.TextSize = 11
+ListLabel.Parent = MainFrame
+
+-- Scrolling Frame Manager File List (Bagian Bawah)
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 236, 0, 95)
-ListScroll.Position = UDim2.new(0, 12, 0, 290)
+ListScroll.Position = UDim2.new(0, 12, 0, 305)
 ListScroll.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
 ListScroll.BorderSizePixel = 0
 ListScroll.ScrollBarThickness = 4
@@ -151,10 +163,10 @@ local ListLayout = Instance.new("UIListLayout")
 ListLayout.Padding = UDim.new(0, 4)
 ListLayout.Parent = ListScroll
 
--- Refresh Button
+-- Tombol Refresh List File
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 236, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 390)
+RefreshButton.Position = UDim2.new(0, 12, 0, 403)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 RefreshButton.TextColor3 = Color3.fromRGB(180, 180, 180)
 RefreshButton.Text = "🔄 Refresh File List"
@@ -162,8 +174,12 @@ RefreshButton.Font = Enum.Font.SourceSans
 RefreshButton.TextSize = 11
 RefreshButton.Parent = MainFrame
 
+local RefreshCorner = Instance.new("UICorner")
+RefreshCorner.CornerRadius = UDim.new(0, 4)
+RefreshCorner.Parent = RefreshButton
 
--- [[ LOGIKA DRAGGABLE UI ]]
+
+-- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -185,7 +201,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ LOGIKA CORE SERIALISASI DATA ]]
+-- [[ LOGIKA CORE ANTI-LIMIT LAYER & REKURSAL DATA ]]
 local function getRelativePath(obj, customRoot)
     local path = {}
     local current = obj.Parent
@@ -199,7 +215,9 @@ end
 
 local function isAPlayerCharacter(obj)
     for _, p in pairs(Players:GetPlayers()) do
-        if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then return true end
+        if p.Character and (obj == p.Character or obj:IsDescendantOf(p.Character)) then
+            return true
+        end
     end
     return false
 end
@@ -266,7 +284,7 @@ local function serializeObject(obj, rootObj)
 end
 
 
--- [[ UPDATE VISUAL GRID MINI-PHOTO (DECAL & TEXTURE SUPPORT) ]]
+-- [[ ENGINE RENDER DAN UPDATE PREVIEW FOTO DECAL/TEXTURE (GRID 1,2,3) ]]
 local function updateImageGrid()
     for _, child in pairs(ImageGridScroll:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
@@ -281,16 +299,18 @@ local function updateImageGrid()
         BoxCorner.CornerRadius = UDim.new(0, 6)
         BoxCorner.Parent = ItemBox
         
-        -- VIEWPORT FRAME
+        -- VIEWPORT FRAME (Kamera Mini 3D Renderer)
         local Viewport = Instance.new("ViewportFrame")
         Viewport.Size = UDim2.new(1, -4, 1, -4)
         Viewport.Position = UDim2.new(0, 2, 0, 2)
         Viewport.BackgroundTransparency = 1
+        -- Menyalakan Sistem Studio Light Agar Decal/Texture Terlihat Jelas
         Viewport.Ambient = Color3.fromRGB(220, 220, 220)
         Viewport.LightColor = Color3.fromRGB(255, 255, 255)
         Viewport.LightDirection = Vector3.new(-1, -1, -1)
         Viewport.Parent = ItemBox
         
+        -- Mengkloning objek (Aset Decal/Texture/SurfaceAppearance otomatis ikut tersalin)
         local clonedObj = obj:Clone()
         if clonedObj:IsA("BasePart") then
             clonedObj.Position = Vector3.new(0, 0, 0)
@@ -300,6 +320,7 @@ local function updateImageGrid()
             clonedObj.Parent = Viewport
         end
         
+        -- Kalibrasi Sudut Pandang Kamera Otomatis
         local cam = Instance.new("Camera")
         cam.FieldOfView = 45
         Viewport.CurrentCamera = cam
@@ -313,7 +334,7 @@ local function updateImageGrid()
             cam.CFrame = CFrame.new(Vector3.new(maxDim, maxDim + 1, maxDim + 3), Vector3.new(0, 0, 0))
         end
         
-        -- Angka Urutan
+        -- Label Penomoran Format Susunan Grid (1, 2, 3...)
         local NumLabel = Instance.new("TextLabel")
         NumLabel.Size = UDim2.new(0, 16, 0, 16)
         NumLabel.Position = UDim2.new(0, 2, 0, 2)
@@ -334,10 +355,11 @@ local function updateImageGrid()
 end
 
 
--- [[ ENGINE DETEKSI LAYER BERLAPIS ]]
+-- [[ LOGIKA PENYUSURAN MODEL BERLAPIS (ANTI-TERLEWAT) ]]
 local function getTopLevelModelOrPart(target)
     if not target or target == workspace then return nil end
     local current = target
+    -- Memanjat struktur folder/model lapis demi lapis untuk mencari pembungkus terluarnya yang aman
     while current.Parent and current.Parent ~= workspace and current.Parent ~= game do
         local pName = current.Parent.Name:lower()
         if pName:match("map") or pName:match("world") or pName:match("stage") then break end
@@ -366,7 +388,7 @@ local function highlightObject(obj, status)
 end
 
 
--- [[ 🔥 DETEKSOR SENSOR MOUSE AUTOMATIC (TANPA KLIK MOUSE) 🔥 ]]
+-- [[ MATRIKS SENSOR HOVER MOUSE REAL-TIME (TANPA KLIK MOUSE) ]]
 Mouse.Move:Connect(function()
     if not IsMultiSelecting then return end
     local target = Mouse.Target
@@ -374,11 +396,10 @@ Mouse.Move:Connect(function()
     if target and not target:IsDescendantOf(ScreenGui) then
         local finalTarget = getTopLevelModelOrPart(target) or target
         
-        -- Memastikan tidak membaca ulang objek yang sama terus menerus saat mouse digerakkan
+        -- Mencegah spam pembacaan konstan pada satu objek yang sama saat mouse bergerak
         if finalTarget ~= LastHoveredObject then
             LastHoveredObject = finalTarget
             
-            -- Jika objek belum ada di daftar, otomatis masukkan
             if not table.find(SelectedObjects, finalTarget) then
                 if not isAPlayerCharacter(finalTarget) and finalTarget ~= workspace then
                     table.insert(SelectedObjects, finalTarget)
@@ -394,8 +415,7 @@ Mouse.Move:Connect(function()
     end
 end)
 
-
--- Toggle On/Off Sensor Mouse
+-- Tombol On/Off Sensor Otomatis
 MultiSelectButton.MouseButton1Click:Connect(function()
     IsMultiSelecting = not IsMultiSelecting
     if IsMultiSelecting then
@@ -416,7 +436,7 @@ MultiSelectButton.MouseButton1Click:Connect(function()
 end)
 
 
--- [[ PROSES SAVE DATA KE .JSON ]]
+-- [[ PROSES SAVE BATCH SELECTION KE .JSON ]]
 SaveSelectButton.MouseButton1Click:Connect(function()
     if #SelectedObjects == 0 then return end
     local SaveData = {}
@@ -452,42 +472,53 @@ SaveSelectButton.MouseButton1Click:Connect(function()
 end)
 
 
--- [[ PROSES COPY ALL MAP ]]
+-- 1. PROSES FITUR LAMA (COPY ALL MAP)
 CopyButton.MouseButton1Click:Connect(function()
-    if not writefile then CopyButton.Text = "Executor Tak Support!"; return end
+    if not writefile then 
+        CopyButton.Text = "Executor Tak Support!"
+        return 
+    end
+
     local SaveData = {}
     local count = 0
     local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     
-    for _, obj in pairs(TargetFolder:GetDescendants()) do
+    local objectsToScan = TargetFolder:GetDescendants()
+    
+    for _, obj in pairs(objectsToScan) do
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
                 CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+                
                 table.insert(SaveData, serializeObject(obj, workspace))
                 if count % 250 == 0 then task.wait() end
             end
         end
     end
+    
     writefile(fileName, HttpService:JSONEncode(SaveData))
     CopyButton.Text = "💾 COPIED MAP!"
     task.wait(1.5)
-    CopyButton.Text = "COPY ALL MAP"
+    CopyButton.Text = "COPY ALL MAP (FITUR LAMA)"
     _G.UpdatePasteList()
 end)
 
 
--- [[ LIST FILE MANAGER & ENGINE PASTE REKURSIF ]]
+-- 2. PROSES LIST MANAGER FILE & PASTE REKURSAL BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
     end
+    
     if not listfiles then return end
     local files = listfiles("")
+    local anyFile = false
     
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
+            anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
             local ItemFrame = Instance.new("Frame")
@@ -497,6 +528,7 @@ _G.UpdatePasteList = function()
             
             local FileSelectBtn = Instance.new("TextButton")
             FileSelectBtn.Size = UDim2.new(1, -26, 1, 0)
+            FileSelectBtn.Position = UDim2.new(0, 0, 0, 0)
             FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             FileSelectBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
             FileSelectBtn.Text = " 📄 " .. string.sub(cleanName, 1, 22)
@@ -534,10 +566,14 @@ _G.UpdatePasteList = function()
             
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+                
                 local success, err = pcall(function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
-                    table.sort(loadedData, function(a, b) return (a.Depth or 0) < (b.Depth or 0) end)
+                    
+                    table.sort(loadedData, function(a, b)
+                        return (a.Depth or 0) < (b.Depth or 0)
+                    end)
                     
                     local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName)
                     if not MasterFolder then
@@ -573,7 +609,9 @@ _G.UpdatePasteList = function()
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
                             local existingObj = targetParent:FindFirstChild(data.Name)
-                            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then return end
+                            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
+                                return
+                            end
                             
                             pasteCount = pasteCount + 1
                             FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
@@ -629,29 +667,49 @@ _G.UpdatePasteList = function()
                                 pcall(function() newObj.CanTouch = props.CanTouch end)
                                 pcall(function() newObj.CastShadow = props.CastShadow end)
                             end
+                            
                             if newObj:IsA("Model") and props.WorldPivot then
                                 pcall(function() newObj:PivotTo(CFrame.new(unpack(props.WorldPivot))) end)
                             end
+                            
                             newObj.Parent = targetParent
                             if pasteCount % 250 == 0 then task.wait() end
                         end)
                     end
                 end)
+                
                 if success then
                     FileSelectBtn.Text = " ✅ PASTE SUCCESSFUL!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
                 else
                     FileSelectBtn.Text = " ❌ ERROR OCCURRED!"
                     FileSelectBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+                    warn(err)
                 end
+                
                 task.wait(2)
-                FileSelectBtn.Text = " 📄 " .. string.sub(cleanName, 1, 22)
+                FileSelectBtn.Text = " 📄 " .. cleanName
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
             end)
         end
     end
+    
+    if not anyFile then
+        local NoFileLabel = Instance.new("TextLabel")
+        NoFileLabel.Size = UDim2.new(1, 0, 0, 30)
+        NoFileLabel.BackgroundTransparency = 1
+        NoFileLabel.Text = "(Belum ada file copy)"
+        NoFileLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+        NoFileLabel.Font = Enum.Font.SourceSansItalic
+        NoFileLabel.TextSize = 12
+        NoFileLabel.Parent = ListScroll
+    end
+    
     ListScroll.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y)
 end
 
-RefreshButton.MouseButton1Click:Connect(function() _G.UpdatePasteList() end)
+RefreshButton.MouseButton1Click:Connect(function()
+    _G.UpdatePasteList()
+end)
+
 _G.UpdatePasteList()
