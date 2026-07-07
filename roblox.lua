@@ -174,11 +174,13 @@ local function isAPlayerCharacter(obj)
     return false
 end
 
+-- Menambahkan class Script ke daftar yang diperbolehkan
 local AllowedSupportClasses = {
     ["Texture"] = true, ["Decal"] = true, ["SurfaceAppearance"] = true, 
     ["SpecialMesh"] = true, ["BlockMesh"] = true, ["CylinderMesh"] = true,
     ["ParticleEmitter"] = true, ["PointLight"] = true, ["SpotLight"] = true, ["SurfaceLight"] = true,
-    ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true
+    ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true,
+    ["Script"] = true, ["LocalScript"] = true, ["ModuleScript"] = true -- Tambahan Kelas Script
 }
 
 -- 1. PROSES COPY DENGAN PROPERTI PENUH & POSISI ASLI
@@ -212,7 +214,13 @@ CopyButton.MouseButton1Click:Connect(function()
                     Properties = {}
                 }
                 
-                if obj:IsA("BasePart") then
+                -- Logika Ekstraksi Properti Script
+                if obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript") then
+                    pcall(function()
+                        data.Properties.Source = obj.Source
+                    end)
+                
+                elseif obj:IsA("BasePart") then
                     data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
                     data.Properties.CFrame = {obj.CFrame:GetComponents()}
                     data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
@@ -234,7 +242,7 @@ CopyButton.MouseButton1Click:Connect(function()
                 elseif obj:IsA("Model") then
                     pcall(function() data.Properties.WorldPivot = {obj:GetPivot():GetComponents()} end)
 
-                elseif AllowedSupportClasses[obj.ClassName] then
+                elseif AllowedSupportClasses[obj.ClassName] and not (obj:IsA("Script") or obj:IsA("LocalScript") or obj:IsA("ModuleScript")) then
                     pcall(function() data.Properties.Texture = obj.Texture end)
                     pcall(function() data.Properties.TextureId = obj.TextureId end)
                     pcall(function() data.Properties.MeshId = obj.MeshId end)
@@ -394,7 +402,14 @@ _G.UpdatePasteList = function()
                             local newObj
                             local props = data.Properties or {}
                             
-                            if AllowedSupportClasses[data.ClassName] then
+                            -- Deteksi Pembuatan Objek Script Baru & Isi Source Kodenya
+                            if data.ClassName == "Script" or data.ClassName == "LocalScript" or data.ClassName == "ModuleScript" then
+                                newObj = Instance.new(data.ClassName)
+                                pcall(function()
+                                    if props.Source then newObj.Source = props.Source end
+                                end)
+                            
+                            elseif AllowedSupportClasses[data.ClassName] then
                                 newObj = Instance.new(data.ClassName)
                                 pcall(function() if props.Texture then newObj.Texture = props.Texture end end)
                                 pcall(function() if props.TextureId then newObj.TextureId = props.TextureId end end)
