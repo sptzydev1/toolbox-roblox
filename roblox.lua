@@ -5,7 +5,6 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local Mouse = LocalPlayer:GetMouse()
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
@@ -18,11 +17,6 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
-
--- Daftar Hitam Objek yang di-klik oleh user agar TIDAK ikut di-copy
-local BlacklistObjects = {}
-local SelectionHighlightMode = false
-local HighlightVisuals = {}
 
 -- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
@@ -119,22 +113,6 @@ local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
 
--- Tombol Konfirmasi Copy setelah seleksi (Disembunyikan di awal)
-local ConfirmButton = Instance.new("TextButton")
-ConfirmButton.Size = UDim2.new(0, 250, 0, 40)
-ConfirmButton.Position = UDim2.new(0.5, -125, 0.85, 0)
-ConfirmButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
-ConfirmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ConfirmButton.Text = "🟩 [ SELESAI & MULAI COPY ]"
-ConfirmButton.Font = Enum.Font.SourceSansBold
-ConfirmButton.TextSize = 14
-ConfirmButton.Visible = false
-ConfirmButton.Parent = ScreenGui
-
-local ConfirmCorner = Instance.new("UICorner")
-ConfirmCorner.CornerRadius = UDim.new(0, 8)
-ConfirmCorner.Parent = ConfirmButton
-
 
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
@@ -181,76 +159,13 @@ local function isAPlayerCharacter(obj)
     return false
 end
 
--- Fungsi mencari Model/Folder teratas saat pohon di-klik, agar satu pohon utuh ter-blacklist
-local function getTopLevelTarget(obj)
-    if not obj or obj == workspace or obj == game then return nil end
-    local current = obj
-    while current.Parent and current.Parent ~= workspace and (current.Parent:IsA("Model") or current.Parent:IsA("Folder")) do
-        current = current.Parent
-    end
-    return current
-end
-
--- LOGIKA KLIK MOUSE UNTUK MENG-CLOSE (BLACKLIST) POHON / OBJEK
-Mouse.Button1Down:Connect(function()
-    if not SelectionHighlightMode then return end
-    local target = Mouse.Target
-    if target and target:IsDescendantOf(workspace) then
-        local topObj = getTopLevelTarget(target) or target
-        
-        if not isAPlayerCharacter(topObj) and not topObj:IsA("Terrain") and not topObj:IsA("Camera") then
-            if not BlacklistObjects[topObj] then
-                -- Masukkan ke blacklist & Beri efek Highlight Merah
-                BlacklistObjects[topObj] = true
-                
-                local highlight = Instance.new("Highlight")
-                highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                highlight.FillTransparency = 0.5
-                highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
-                highlight.Parent = topObj
-                table.insert(HighlightVisuals, highlight)
-            else
-                -- Jika diklik lagi, batalkan blacklist (Remove dari daftar hitam)
-                BlacklistObjects[topObj] = nil
-                for i, hl in ipairs(HighlightVisuals) do
-                    if hl.Parent == topObj then
-                        hl:Destroy()
-                        table.remove(HighlightVisuals, i)
-                        break
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- 1. TAHAP AWAL: AKTIFKAN SELEKSI POHON VIA MOUSE
+-- 1. PROSES COPY MENYELURUH (TERMASUK SEMUA INSERT DI DALAMNYA)
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
     end
 
-    if not SelectionHighlightMode then
-        SelectionHighlightMode = true
-        BlacklistObjects = {}
-        HighlightVisuals = {}
-        
-        CopyButton.Text = "🔴 KLIK POHON DI MAP UTK CLOSE"
-        CopyButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        ConfirmButton.Visible = true
-    end
-end)
-
--- 2. TAHAP AKHIR: PROSES COPY SETELAH SELESAI PILIH
-ConfirmButton.MouseButton1Click:Connect(function()
-    SelectionHighlightMode = false
-    ConfirmButton.Visible = false
-    CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
-    
-    -- Hapus semua efek visual merah sebelum proses dumping data file
-    for _, hl in pairs(HighlightVisuals) do hl:Destroy() end
-    
     local SaveData = {}
     local count = 0
     
@@ -260,51 +175,49 @@ ConfirmButton.MouseButton1Click:Connect(function()
     local objectsToScan = TargetFolder:GetDescendants()
     
     for _, obj in pairs(objectsToScan) do
-        if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") then
-            -- LOGIKA CHECK EXTRA: Memastikan objek atau bapak/induknya TIDAK ADA di dalam daftar BlacklistObjects!
-            local isBlacklisted = false
-            local currentCheck = obj
-            while currentCheck and currentCheck ~= workspace do
-                if BlacklistObjects[currentCheck] then
-                    isBlacklisted = true
-                    break
+        -- PERUBAHAN UTAMA: Membuka semua filter tipe kelas agar insert jenis apa saja ikut tercopy bebas
+        if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
+            count = count + 1
+            
+            CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
+            
+            local relPath = getRelativePath(obj)
+            local data = {
+                Name = obj.Name,
+                ClassName = obj.ClassName,
+                RelativePath = relPath,
+                Depth = #relPath,
+                Properties = {}
+            }
+            
+            -- Menyimpan properti dasar secara dinamis berdasarkan ketersediaannya
+            pcall(function() data.Properties.TextureId = obj.TextureId end)
+            pcall(function() data.Properties.Texture = obj.Texture end)
+            pcall(function() data.Properties.Image = obj.Image end)
+            pcall(function() data.Properties.SoundId = obj.SoundId end)
+            pcall(function() data.Properties.Volume = obj.Volume end)
+            pcall(function() data.Properties.Face = obj.Face.Name end)
+            pcall(function() data.Properties.Enabled = obj.Enabled end)
+            pcall(function() data.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255} end)
+            
+            if obj:IsA("BasePart") then
+                data.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
+                data.Properties.CFrame = {obj.CFrame:GetComponents()}
+                data.Properties.Material = obj.Material.Name
+                data.Properties.Transparency = obj.Transparency
+                data.Properties.Anchored = obj.Anchored
+                data.Properties.CanCollide = obj.CanCollide
+                
+                if obj:IsA("MeshPart") then
+                    pcall(function() data.Properties.MeshId = obj.MeshId end)
+                elseif obj:IsA("UnionOperation") then
+                    pcall(function() data.Properties.AssetId = obj.AssetId end)
                 end
-                currentCheck = currentCheck.Parent
             end
             
-            if not isBlacklisted and not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
-                count = count + 1
-                
-                CopyButton.Text = "📸 [" .. count .. "] " .. string.sub(obj.Name, 1, 12)
-                
-                local relPath = getRelativePath(obj)
-                local data = {
-                    Name = obj.Name,
-                    ClassName = obj.ClassName,
-                    RelativePath = relPath,
-                    Depth = #relPath
-                }
-                
-                if obj:IsA("BasePart") then
-                    data.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                    data.CFrame = {obj.CFrame:GetComponents()}
-                    data.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                    data.Material = obj.Material.Name
-                    data.Transparency = obj.Transparency
-                    data.Anchored = obj.Anchored
-                    data.CanCollide = obj.CanCollide
-                    
-                    if obj:IsA("MeshPart") then
-                        pcall(function() data.MeshId = obj.MeshId end)
-                        pcall(function() data.TextureId = obj.TextureId end)
-                    elseif obj:IsA("UnionOperation") then
-                        pcall(function() data.AssetId = obj.AssetId end)
-                    end
-                end
-                table.insert(SaveData, data)
-                
-                if count % 250 == 0 then task.wait() end
-            end
+            table.insert(SaveData, data)
+            
+            if count % 250 == 0 then task.wait() end
         end
     end
     
@@ -315,7 +228,7 @@ ConfirmButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 3. PROSES PASTE BERURUTAN
+-- 2. PROSES PASTE MENYELURUH BERDASARKAN HIRARKI KEDALAMAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
@@ -351,6 +264,7 @@ _G.UpdatePasteList = function()
                     local fileContent = readfile(file)
                     local loadedData = HttpService:JSONDecode(fileContent)
                     
+                    -- Urutkan kedalaman agar induk terbuat lebih dahulu dibanding isi (children) didalamnya
                     table.sort(loadedData, function(a, b)
                         return (a.Depth or 0) < (b.Depth or 0)
                     end)
@@ -368,14 +282,13 @@ _G.UpdatePasteList = function()
                             local found = currentParent:FindFirstChild(pathInfo.Name)
                             if not found then
                                 pcall(function()
-                                    if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
-                                        found = Instance.new(pathInfo.ClassName)
-                                    else
-                                        found = Instance.new("Folder")
-                                    end
+                                    found = Instance.new(pathInfo.ClassName)
                                     found.Name = pathInfo.Name
                                     found.Parent = currentParent
                                 end)
+                                if not found then
+                                    found = currentParent -- Fallback keamanan struktur jika gagal instansiasi
+                                end
                             end
                             currentParent = found
                         end
@@ -389,8 +302,8 @@ _G.UpdatePasteList = function()
                         pcall(function()
                             local targetParent = findOrCreateParent(data.RelativePath)
                             
-                            local existingObj = targetParent:FindFirstChild(data.Name)
-                            if existingObj and (data.ClassName == "Folder" or data.ClassName == "Model") then
+                            -- Mengizinkan pembuatan ulang insert meskipun induknya memiliki nama yang sama
+                            if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then
                                 return
                             end
                             
@@ -398,29 +311,42 @@ _G.UpdatePasteList = function()
                             FileSelectBtn.Text = "🔨 [" .. pasteCount .. "/" .. totalObjs .. "] " .. string.sub(data.Name, 1, 10)
                             
                             local newObj
-                            if data.ClassName == "MeshPart" or (data.MeshId and data.MeshId ~= "") then
+                            local props = data.Properties or {}
+                            
+                            -- Deteksi Spesial Konversi MeshPart
+                            if data.ClassName == "MeshPart" or (props.MeshId and props.MeshId ~= "") then
                                 newObj = Instance.new("Part")
                                 local specialMesh = Instance.new("SpecialMesh")
                                 specialMesh.MeshType = Enum.MeshType.FileMesh
-                                specialMesh.MeshId = data.MeshId or ""
-                                specialMesh.TextureId = data.TextureId or ""
+                                specialMesh.MeshId = props.MeshId or ""
+                                specialMesh.TextureId = props.TextureId or ""
                                 specialMesh.Parent = newObj
-                            elseif data.ClassName == "Folder" or data.ClassName == "Model" or data.ClassName == "Part" or data.ClassName == "WedgePart" or data.ClassName == "CornerWedgePart" or data.ClassName == "TrussPart" then
-                                newObj = Instance.new(data.ClassName)
                             else
-                                newObj = Instance.new("Part")
+                                -- Membuat instansiasi apa saja jenis objek insert-nya secara bebas (Universal Creator)
+                                newObj = Instance.new(data.ClassName)
                             end
                             
                             newObj.Name = data.Name
                             
-                            if data.CFrame and newObj:IsA("BasePart") then
-                                newObj.Size = Vector3.new(data.Size[1], data.Size[2], data.Size[3])
-                                newObj.CFrame = CFrame.new(unpack(data.CFrame))
-                                newObj.Color = Color3.fromRGB(data.Color[1], data.Color[2], data.Color[3])
-                                pcall(function() newObj.Material = Enum.Material[data.Material] end)
-                                newObj.Transparency = data.Transparency
-                                newObj.Anchored = data.Anchored
-                                newObj.CanCollide = data.CanCollide
+                            -- Memasang ulang seluruh isi properti yang tersimpan secara dinamis
+                            if newObj:IsA("BasePart") and props.CFrame then
+                                newObj.Size = Vector3.new(props.Size[1], props.Size[2], props.Size[3])
+                                newObj.CFrame = CFrame.new(unpack(props.CFrame))
+                                newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3])
+                                pcall(function() newObj.Material = Enum.Material[props.Material] end)
+                                newObj.Transparency = props.Transparency
+                                newObj.Anchored = props.Anchored
+                                newObj.CanCollide = props.CanCollide
+                            else
+                                -- Pasang properti non-part (Decal, Sound, Light, dll)
+                                pcall(function() newObj.TextureId = props.TextureId end)
+                                pcall(function() newObj.Texture = props.Texture end)
+                                pcall(function() newObj.Image = props.Image end)
+                                pcall(function() newObj.SoundId = props.SoundId end)
+                                pcall(function() newObj.Volume = props.Volume end)
+                                pcall(function() newObj.Enabled = props.Enabled end)
+                                pcall(function() newObj.Face = Enum.NormalId[props.Face] end)
+                                pcall(function() newObj.Color = Color3.fromRGB(props.Color[1], props.Color[2], props.Color[3]) end)
                             end
                             
                             newObj.Parent = targetParent
