@@ -26,13 +26,13 @@ local HighlightStorage = {} -- Untuk efek visual part yang terpilih
 
 -- [[ CREATING GUI (Premium Curved UI V2) ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyCopyGuiV3"
+ScreenGui.Name = "SpyzyyCopyGuiV3_Fixed"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 340) -- Ukuran ditinggikan untuk akomodasi tombol multi-select
+MainFrame.Size = UDim2.new(0, 230, 0, 340)
 MainFrame.Position = UDim2.new(0.5, -115, 0.5, -170)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
@@ -53,7 +53,7 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 COPY MAP BY SPYZYY V3 🚀"
+Title.Text = "🚀 COPY MAP BY SPYZYY V3.1 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
@@ -74,11 +74,11 @@ local CopyButtonCorner = Instance.new("UICorner")
 CopyButtonCorner.CornerRadius = UDim.new(0, 6)
 CopyButtonCorner.Parent = CopyButton
 
--- 🔥 TOMBOL MULTI-SELECT (AKTIFKAN/MATIKAN MODAL)
+-- TOMBOL MULTI-SELECT
 local MultiSelectButton = Instance.new("TextButton")
 MultiSelectButton.Size = UDim2.new(0, 206, 0, 32)
 MultiSelectButton.Position = UDim2.new(0, 12, 0, 73)
-MultiSelectButton.BackgroundColor3 = Color3.fromRGB(200, 130, 0) -- Orange pas pemilihan
+MultiSelectButton.BackgroundColor3 = Color3.fromRGB(200, 130, 0)
 MultiSelectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MultiSelectButton.Text = "🎯 MULTI-SELECT: OFF"
 MultiSelectButton.Font = Enum.Font.SourceSansBold
@@ -89,16 +89,16 @@ local MultiCorner = Instance.new("UICorner")
 MultiCorner.CornerRadius = UDim.new(0, 6)
 MultiCorner.Parent = MultiSelectButton
 
--- 🔥 TOMBOL SAVE SELECTION (DITEKAN JIKA SUDAH SELESAI PILIH BANYAK OBJEK)
+-- TOMBOL SAVE SELECTION
 local SaveSelectButton = Instance.new("TextButton")
 SaveSelectButton.Size = UDim2.new(0, 206, 0, 25)
 SaveSelectButton.Position = UDim2.new(0, 12, 0, 110)
-SaveSelectButton.BackgroundColor3 = Color3.fromRGB(0, 150, 90) -- Hijau
+SaveSelectButton.BackgroundColor3 = Color3.fromRGB(0, 150, 90)
 SaveSelectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 SaveSelectButton.Text = "💾 SAVE MULTI SELECTION (0)"
 SaveSelectButton.Font = Enum.Font.SourceSansBold
 SaveSelectButton.TextSize = 11
-SaveSelectButton.Visible = false -- Hanya muncul saat multi-select aktif
+SaveSelectButton.Visible = false
 SaveSelectButton.Parent = MainFrame
 
 local SaveSelCorner = Instance.new("UICorner")
@@ -254,25 +254,34 @@ local function serializeObject(obj, rootObj)
     return data
 end
 
--- 🔥 LOGIKA AMBIL MODEL PALING ATAS (Parent Terluar Sebelum Workspace)
+-- 🔥 PERBAIKAN STRUKTUR: MENYUSURI MODEL DENGAN BATASAN YANG INTERAKTIF
 local function getTopLevelModelOrPart(target)
     if not target or target == workspace then return nil end
     
     local current = target
-    -- Naiki terus struktur parentnya selama parentnya masih berupa Model/Folder dan bukan Workspace
-    while current.Parent and current.Parent ~= workspace and current.Parent ~= game and (current.Parent:IsA("Model") or current.Parent:IsA("Folder")) do
-        current = current.Parent
+    -- Menyusuri ke atas untuk mencari model berlapis, tapi berhenti jika menemukan nama folder root game (seperti "Workspace" atau folder map utama)
+    while current.Parent and current.Parent ~= workspace and current.Parent ~= game do
+        local pName = current.Parent.Name:lower()
+        -- Mencegah agar tidak kebablasan mengambil folder Map besar bawaan game
+        if pName:match("map") or pName:match("world") or pName:match("stage") then
+            break
+        end
+        if current.Parent:IsA("Model") or current.Parent:IsA("Folder") then
+            current = current.Parent
+        else
+            break
+        end
     end
     return current
 end
 
--- Memberi tanda kotak highlight biru pada objek terpilih ingame
+-- Memberi tanda kotak highlight pada objek terpilih ingame (Mendukung rekursif jika target berupa Model)
 local function highlightObject(obj, status)
     if status then
         if not HighlightStorage[obj] then
             local box = Instance.new("SelectionBox")
             box.Color3 = Color3.fromRGB(0, 200, 255)
-            box.LineThickness = 0.05
+            box.LineThickness = 0.04
             box.Adornee = obj
             box.Parent = ScreenGui
             HighlightStorage[obj] = box
@@ -287,15 +296,17 @@ end
 
 -- [[ INTEGRASI CLICK / MULTI SELECT LISTENER ]]
 UIS.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed or not IsMultiSelecting then return end
+    -- Memastikan klik tidak terblokir oleh UI buatan game (gameProcessed dimatikan agar tetap merespon klik objek map)
+    if not IsMultiSelecting then return end
     
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        -- Menggunakan Mouse.Target (menembus objek transparan/berlapis dasar)
         local target = Mouse.Target
-        if target then
-            -- Temukan model/folder paling atas dari target yang diklik
+        if target and not target:IsDescendantOf(ScreenGui) then
+            -- Cari struktur model induknya yang aman, jika gagal gunakan objek fisik aslinya (Fallback)
             local finalTarget = getTopLevelModelOrPart(target) or target
             
-            -- Jika belum ada di list, masukkan. Jika sudah ada, hapus (Toggle select)
+            -- Toggle Select
             if not table.find(SelectedObjects, finalTarget) then
                 table.insert(SelectedObjects, finalTarget)
                 highlightObject(finalTarget, true)
@@ -325,6 +336,10 @@ MultiSelectButton.MouseButton1Click:Connect(function()
         MultiSelectButton.Text = "🎯 MULTI-SELECT: OFF"
         MultiSelectButton.BackgroundColor3 = Color3.fromRGB(200, 130, 0)
         SaveSelectButton.Visible = false
+        -- Bersihkan visual selection jika dimatikan tanpa save
+        for obj, _ in pairs(HighlightStorage) do highlightObject(obj, false) end
+        SelectedObjects = {}
+        HighlightStorage = {}
     end
 end)
 
@@ -345,11 +360,10 @@ SaveSelectButton.MouseButton1Click:Connect(function()
     SaveSelectButton.Text = "⚙️ MEMPROSES DATA..."
     
     for _, mainObj in ipairs(SelectedObjects) do
-        -- Simpan objek utamanya
         count = count + 1
         table.insert(SaveData, serializeObject(mainObj, mainObj.Parent))
         
-        -- Ambil seluruh anak cucu (Stiker, Mesh, Decal, dll)
+        -- Ambil semua anak cucu di dalam model tersebut (Stiker, Mesh, Decal, dsb)
         for _, obj in pairs(mainObj:GetDescendants()) do
             if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
                 count = count + 1
@@ -376,7 +390,7 @@ SaveSelectButton.MouseButton1Click:Connect(function()
 end)
 
 
--- 1. PROSES COPY ALL MAP
+-- PROSES COPY ALL MAP
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then CopyButton.Text = "Executor Tak Support!"; return end
     local SaveData = {}
@@ -401,7 +415,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE BERURUTAN
+-- PROSES REFRESH DAN PASTE BERURUTAN
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
