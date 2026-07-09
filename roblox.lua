@@ -262,7 +262,16 @@ local AllowedSupportClasses = {
     ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true
 }
 
+-- Variabel status validasi runtime global
+local IsAuthorized = false
+
 CopyButton.MouseButton1Click:Connect(function()
+    -- Cek proteksi tambahan sebelum mengeksekusi fitur utama
+    if not IsAuthorized then 
+        ScreenGui.Enabled = false
+        return 
+    end
+
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
@@ -277,6 +286,7 @@ CopyButton.MouseButton1Click:Connect(function()
     local objectsToScan = TargetFolder:GetDescendants()
     
     for _, obj in pairs(objectsToScan) do
+        if not IsAuthorized then return end -- Emergency break
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
@@ -389,6 +399,7 @@ _G.UpdatePasteList = function()
             end)
             
             FileSelectBtn.MouseButton1Click:Connect(function()
+                if not IsAuthorized then return end
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
                 task.spawn(function()
                     local success, err = pcall(function()
@@ -422,6 +433,7 @@ _G.UpdatePasteList = function()
                         local totalObjs = #loadedData
                         
                         for _, data in ipairs(loadedData) do
+                            if not IsAuthorized then return end
                             pcall(function()
                                 local targetParent = findOrCreateParent(data.RelativePath)
                                 if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then return end
@@ -477,21 +489,32 @@ _G.UpdatePasteList = function()
     ListScroll.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y)
 end
 
-RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
+RefreshButton.MouseButton1Click:Connect(function()
+    if IsAuthorized then _G.UpdatePasteList() end
+end)
 
 -- ====================================================================
--- [[ FIX UPDATE: LIVE LOOP BACKGROUND VERIFICATION (ANTI IN-GAME BYPASS) ]]
+-- [[ FIX TOTAL: SISTEM ANTI-CACHE & REALTIME FORCED VERIFICATION ]]
 -- ====================================================================
 local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%s%c]", "")
 
--- Fungsi internal untuk memeriksa status pendaftaran ke Github secara realtime
 local function cekStatusWhitelist()
     local sukses, isiFile = pcall(function()
-        -- Menggunakan Anti-Cache agar Github selalu mengirimkan file terbaru yang baru diperbarui
-        return game:HttpGet(GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999))
+        -- Trik Rekayasa HTTP: Memaksa executor meminta request data mentah murni tanpa cache lokal
+        return game:HttpGetAsync(GITHUB_RAW_URL .. "?t=" .. os.time() .. "&rand=" .. math.random(100000, 999999), {
+            ["Cache-Control"] = "no-cache, max-age=0, must-revalidate",
+            ["Pragma"] = "no-cache"
+        })
     end)
     
-    -- Jika gagal memuat/koneksi bermasalah saat ditengah game, kita anggap true sementara agar user tidak ter-kick acak saat internet down sesaat
+    -- Cadangan pcall alternatif jika executor tidak mendukung argumen Header tabel tambahan
+    if not sukses or not isiFile or #isiFile < 2 then
+        sukses, isiFile = pcall(function()
+            return game:HttpGet(GITHUB_RAW_URL .. "?nocache=" .. os.time() .. math.random(111, 999))
+        end)
+    end
+    
+    -- Jika koneksi terputus total saat bermain, return true sementara (mencegah false-kick akibat lag provider)
     if not sukses or not isiFile or #isiFile < 2 then 
         return true 
     end
@@ -499,20 +522,20 @@ local function cekStatusWhitelist()
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
         local userBersih = baris:gsub("[,%s%c]", "")
         if #userBersih > 0 and string.lower(userBersih) == usernameSekarang then
-            return true -- User masih terdaftar sah
+            return true 
         end
     end
-    return false -- User sudah dihapus dari Github
+    return false 
 end
 
--- Thread Utama Verifikasi & Live Monitoring
+-- Thread Utama Penanganan Loop & Eksekusi Ulang Whitelist
 task.spawn(function()
     LoadText.Text = "Verifying License..."
     LoadStroke.Color = Color3.fromRGB(255, 200, 0)
     
-    -- Pengecekan Pertama saat Menjalankan Script
     task.wait(0.5)
     if not cekStatusWhitelist() then
+        IsAuthorized = false
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
@@ -524,7 +547,8 @@ task.spawn(function()
         return
     end
 
-    -- KONDISI JIKA SUKSES LOG IN DI AWAL
+    -- BERHASIL LOG IN
+    IsAuthorized = true
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -538,16 +562,19 @@ task.spawn(function()
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- BARU: Loop Background Otomatis Berjalan Setiap 10 Detik Sekali
+    -- LOOP LIVE BACKGROUND MONITORING (Ditingkatkan menjadi setiap 5 detik agar respons kilat)
     while true do
-        task.wait(10) 
+        task.wait(5) 
         local masihAktif = cekStatusWhitelist()
         
         if not masihAktif then
-            -- Aksi Instan: Matikan UI, Hancurkan GUI, lalu Kick Player!
+            -- KUNCI INSTAN: Matikan seluruh akses fitur internal di detik itu juga
+            IsAuthorized = false 
             ScreenGui.Enabled = false
             ScreenGui:Destroy()
-            LocalPlayer:Kick("\n[LIGENS KADALUARSA / EXPIRED]\n\nUsername Anda telah dihapus dari sistem Whitelist oleh Admin.\nHubungi Admin untuk mendaftar kembali: @sptzyy")
+            
+            -- Tendang secara paksa dari server
+            LocalPlayer:Kick("\n[LISENSI EXPIRED / REUBLISHED]\n\nUsername Anda telah dihapus dari sistem Whitelist oleh Admin.\nHubungi Admin: @sptzyy")
             break
         end
     end
