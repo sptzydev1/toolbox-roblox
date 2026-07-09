@@ -1,4 +1,4 @@
--- [[ CONFIGURASI & VARIABLE UTAMA ]]
+-- [[ ULTRA MAP COPIER V2 - FINAL FULL FEATURES ]]
 local HttpService = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -20,10 +20,10 @@ task.spawn(function()
     end)
 end)
 
-local FILE_PREFIX = "GameCopyV4_"
+local FILE_PREFIX = "GameCopyUltimate_"
 local TargetFolder = workspace
 
--- [[ DEKLARASI GUI UTAMA MAP COPY (MODERN DARK THEME) ]]
+-- [[ UI DESIGN (MODERN DARK THEME) ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
@@ -58,7 +58,7 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
 Title.Parent = MainFrame
 
--- [[ PANEL PROFILE USER ]]
+-- [[ USER PROFILE PANEL ]]
 local InfoPanel = Instance.new("Frame")
 InfoPanel.Size = UDim2.new(0, 216, 0, 85)
 InfoPanel.Position = UDim2.new(0, 12, 0, 40)
@@ -115,7 +115,7 @@ task.spawn(function()
     end)
 end)
 
--- [[ ELEMENT KONTROL ]]
+-- [[ INTERFACE CONTROLS ]]
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 216, 0, 36)
 CopyButton.Position = UDim2.new(0, 12, 0, 135)
@@ -172,7 +172,7 @@ local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 6)
 RefreshCorner.Parent = RefreshButton
 
--- [[ LOGIKA DRAGGABLE ]]
+-- [[ DRAGGABLE SCRIPT ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -188,19 +188,20 @@ MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.Us
 UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
 
--- [[ DAFTAR PROPERTI UTAMA UNTUK DILAKUKAN REFLEKSI ]]
+-- [[ LIST PROPERTI UNTUK EKSTRAKSI REFLECTION LOOP ]]
 local PropertiesToSerialize = {
     "Size", "CFrame", "Transparency", "Reflectance", "Anchored", "CanCollide", "CastShadow",
-    "MeshId", "TextureId", "AssetId", "Texture", "Face", "Color", "Brightness", "Range", 
+    "MeshId", "TextureId", "AssetId", "Texture", "Face", "Brightness", "Range", 
     "Enabled", "Scale", "Offset", "SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", 
-    "SkyboxUp", "SunTextureId", "MoonTextureId", "Density", "Friction", "Elasticity", "Color3",
-    "Material", "Shape", "ShadowIntensity"
+    "SkyboxUp", "SunTextureId", "MoonTextureId", "Density", "Friction", "Elasticity",
+    "Material", "Shape"
 }
 
+-- [[ SERIALIZATION & DESERIALIZATION ENGINE ]]
 local function serializeValue(val)
     if typeof(val) == "Vector3" then return {val.X, val.Y, val.Z}
     elseif typeof(val) == "CFrame" then return {val:GetComponents()}
-    elseif typeof(val) == "Color3" then return {val.R * 255, val.G * 255, val.B * 255}
+    elseif typeof(val) == "Color3" then return {math.round(val.R * 255), math.round(val.G * 255), math.round(val.B * 255)}
     elseif typeof(val) == "EnumItem" then return {Type = tostring(val.EnumType), Name = val.Name}
     else return val end
 end
@@ -234,7 +235,7 @@ local function checkPlayerChar(obj)
     return false
 end
 
--- [[ CORE SCAN ENGINE ]]
+-- [[ SYSTEM 1: SCAN ENGINE ]]
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then CopyButton.Text = "Executor Tidak Mendukung File System!"; return end
     CopyButton.Text = "🔍 Memindai Semua Objek..."; task.wait(0.2)
@@ -265,13 +266,16 @@ CopyButton.MouseButton1Click:Connect(function()
             for _, prop in pairs(PropertiesToSerialize) do
                 pcall(function()
                     local val = obj[prop]
-                    if val ~= nil then
-                        itemData.Properties[prop] = serializeValue(val)
-                    end
+                    if val ~= nil then itemData.Properties[prop] = serializeValue(val) end
                 end)
             end
             
-            -- Kasus Khusus: Pivot Model Bawaan
+            -- Ambil data warna secara absolut (Bypass Bug Warna)
+            pcall(function()
+                if obj.Color then itemData.Properties["Color"] = serializeValue(obj.Color) end
+            end)
+            
+            -- Penanganan Struktur Khusus Model (Bypass Letak & Masalah Insert Service)
             if obj:IsA("Model") then
                 pcall(function()
                     itemData.Properties["WorldPivot"] = serializeValue(obj:GetPivot())
@@ -290,7 +294,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- [[ CORE PASTE ENGINE ]]
+-- [[ SYSTEM 2: PASTE ENGINE ]]
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     if not listfiles then return end
@@ -344,7 +348,7 @@ _G.UpdatePasteList = function()
                         local fileContent = readfile(file)
                         local loadedData = HttpService:JSONDecode(fileContent)
                         
-                        -- Mengurutkan kedalaman struktur
+                        -- Mengurutkan kedalaman struktur induk -> anak agar rapi
                         table.sort(loadedData, function(a, b) return (a.Depth or 0) < (b.Depth or 0) end)
                         
                         local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName) or Instance.new("Folder")
@@ -387,17 +391,30 @@ _G.UpdatePasteList = function()
                                 newObj.Name = data.Name
                                 createdInstances[data.Name] = newObj
                                 
-                                -- Pengembalian Properti Asli Secara Otomatis & Dinamis
                                 local props = data.Properties or {}
+                                
+                                -- FIX BUG BENTUK: Inisialisasi pembentuk visual sebelum memuat fisiknya
+                                if props.Shape then pcall(function() newObj.Shape = deserializeValue(props.Shape) end) end
+                                if props.MeshId then pcall(function() newObj.MeshId = props.MeshId end) end
+                                if props.TextureId then pcall(function() newObj.TextureId = props.TextureId end) end
+                                
+                                -- Pengembalian Properti Asli Secara Otomatis
                                 for propName, propValue in pairs(props) do
-                                    if propName ~= "WorldPivot" and propName ~= "PrimaryPartName" then
+                                    if propName ~= "WorldPivot" and propName ~= "PrimaryPartName" and propName ~= "Shape" then
                                         pcall(function()
-                                            newObj[propName] = deserializeValue(propValue)
+                                            if propName == "Color" then
+                                                newObj.Color = Color3.fromRGB(unpack(propValue))
+                                            else
+                                                newObj[propName] = deserializeValue(propValue)
+                                            end
                                         end)
                                     end
                                 end
                                 
-                                -- Penyesuaian khusus untuk Pivot Model asli
+                                -- FIX BUG CFRAME/LETAK MODEL: Kunci posisi absolut koordinat paling akhir
+                                if props.CFrame then pcall(function() newObj.CFrame = deserializeValue(props.CFrame) end) end
+                                
+                                -- Restorasi Pivot Utama Model (Insert Service Support)
                                 if newObj:IsA("Model") and props.WorldPivot then
                                     pcall(function() newObj:PivotTo(deserializeValue(props.WorldPivot)) end)
                                 end
@@ -406,7 +423,7 @@ _G.UpdatePasteList = function()
                             end)
                         end
                         
-                        -- Sinkronisasi Akhir PrimaryPart asli
+                        -- Sinkronisasi Akhir PrimaryPart pada Model
                         for _, data in ipairs(loadedData) do
                             if data.ClassName == "Model" and data.Properties.PrimaryPartName then
                                 pcall(function()
