@@ -4,13 +4,13 @@ local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserService = game:GetService("UserService")
-local TweenService = game:GetService("TweenService") -- Ditambahkan untuk animasi halus
+local TweenService = game:GetService("TweenService") 
 local LocalPlayer = Players.LocalPlayer
 
 -- Proteksi Instan PlayerGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.PlayerGui
 
--- Mendapatkan Nama Game Secara Otomatis (Aman dari Delay)
+-- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
 task.spawn(function()
     pcall(function()
@@ -32,7 +32,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Enabled = true
 ScreenGui.Parent = PlayerGui
 
--- MAIN FRAME (Fitur Utama) - Di-set transparan dulu untuk Intro
+-- MAIN FRAME (Fitur Utama)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 230, 0, 400)
@@ -68,7 +68,7 @@ local IntroFrame = Instance.new("Frame")
 IntroFrame.Name = "IntroFrame"
 IntroFrame.Size = UDim2.new(0, 230, 0, 400)
 IntroFrame.Position = UDim2.new(0.5, -115, 0.5, -200)
-IntroFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18) -- Warna background intro sedikit lebih gelap
+IntroFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 IntroFrame.BorderSizePixel = 0
 IntroFrame.Parent = ScreenGui
 
@@ -81,18 +81,16 @@ IntroStroke.Thickness = 2
 IntroStroke.Color = Color3.fromRGB(0, 200, 255)
 IntroStroke.Parent = IntroFrame
 
--- Element Logo (Bentuk Lingkaran Bersinar)
 local IntroLogo = Instance.new("ImageLabel")
 IntroLogo.Name = "IntroLogo"
 IntroLogo.Size = UDim2.new(0, 70, 0, 70)
 IntroLogo.Position = UDim2.new(0.5, -35, 0.4, -35)
 IntroLogo.BackgroundTransparency = 1
-IntroLogo.Image = "rbxassetid://3570695787" -- Aset lingkaran loading melingkar keren
+IntroLogo.Image = "rbxassetid://3570695787" 
 IntroLogo.ImageColor3 = Color3.fromRGB(0, 200, 255)
-IntroLogo.ImageTransparency = 1 -- Mulai dari transparan
+IntroLogo.ImageTransparency = 1 
 IntroLogo.Parent = IntroFrame
 
--- Teks di Bawah Logo
 local IntroText = Instance.new("TextLabel")
 IntroText.Name = "IntroText"
 IntroText.Size = UDim2.new(1, 0, 0, 30)
@@ -102,7 +100,7 @@ IntroText.Text = "SPYZYY SYSTEM"
 IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
 IntroText.Font = Enum.Font.GothamBold
 IntroText.TextSize = 16
-IntroText.TextTransparency = 1 -- Mulai dari transparan
+IntroText.TextTransparency = 1 
 IntroText.Parent = IntroFrame
 
 
@@ -275,21 +273,18 @@ UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- [[ JALANKAN PROSES ANIMASI INTRO SECARA ASINKRONUS ]]
+-- [[ JALANKAN PROSES ANIMASI INTRO ]]
 task.spawn(function()
-    -- 1. Fade-in logo dan teks
     local fadeInInfo = TweenInfo.new(1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
     TweenService:Create(IntroLogo, fadeInInfo, {ImageTransparency = 0}):Play()
     TweenService:Create(IntroText, fadeInInfo, {TextTransparency = 0}):Play()
     
-    -- 2. Rotasi Logo (Efek Berputar Tanpa Henti selama Intro)
     local rotateInfo = TweenInfo.new(1.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
     local logoRotation = TweenService:Create(IntroLogo, rotateInfo, {Rotation = 360})
     logoRotation:Play()
     
-    task.wait(2.5) -- Lama waktu nunggu intro (2.5 detik)
+    task.wait(2.5) 
     
-    -- 3. Fade-out panel Intro (Menghilang halus)
     local fadeOutInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(IntroLogo, fadeOutInfo, {ImageTransparency = 1}):Play()
     TweenService:Create(IntroText, fadeOutInfo, {TextTransparency = 1}):Play()
@@ -298,12 +293,10 @@ task.spawn(function()
     
     frameFade:Play()
     frameFade.Completed:Connect(function()
-        logoRotation:Cancel() -- Matikan putaran logo
-        IntroFrame:Destroy()   -- Hapus panel intro dari memori agar ringan
+        logoRotation:Cancel() 
+        IntroFrame:Destroy()   
         
-        -- 4. Munculkan Menu Utama (MainFrame)
         MainFrame.Visible = true
-        -- Efek pop-up halus untuk menu utama
         MainFrame.Size = UDim2.new(0, 0, 0, 0)
         MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
         TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
@@ -446,11 +439,9 @@ _G.UpdatePasteList = function()
     if not listfiles then return end
     
     local files = pcall(listfiles, "") and listfiles("") or {}
-    local anyFile = false
     
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
-            anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
             local ItemFrame = Instance.new("Frame")
@@ -508,7 +499,7 @@ _G.UpdatePasteList = function()
                         
                         local function findOrCreateParent(relativePath)
                             local currentParent = MasterFolder
-                            for _, pathInfo in ip his ipairs(relativePath) do
+                            for _, pathInfo in ipairs(relativePath) do
                                 local found = currentParent:FindFirstChild(pathInfo.Name)
                                 if not found then
                                     if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
