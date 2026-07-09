@@ -4,6 +4,7 @@ local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserService = game:GetService("UserService")
+local TweenService = game:GetService("TweenService") -- Ditambahkan untuk animasi halus
 local LocalPlayer = Players.LocalPlayer
 
 -- Proteksi Instan PlayerGui
@@ -22,21 +23,24 @@ end)
 
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
+local SaveMode = "JSON" -- "JSON" untuk Mobile, "RBXM" untuk PC
 
 -- [[ DEKLARASI GUI UTAMA MAP COPY ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SpyzyyCopyGuiV2"
+ScreenGui.Name = "SpyzyyCopyGuiV5"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = true -- Langsung aktif tanpa check lisensi
+ScreenGui.Enabled = true
 ScreenGui.Parent = PlayerGui
 
+-- MAIN FRAME (Fitur Utama) - Di-set transparan dulu untuk Intro
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 360) -- Ukuran ditinggikan sedikit agar info profile muat
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 230, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -115, 0.5, -200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
+MainFrame.Visible = false -- Disembunyikan dulu sampai intro selesai
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -52,15 +56,59 @@ MainStroke.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.BackgroundTransparency = 1
-Title.Text = "🚀 COPY MAP BY SPYZYY V2 🚀"
+Title.Text = "🚀 COPY MAP BY SPYZYY V5 🚀"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 15
+Title.TextSize = 14
 Title.Parent = MainFrame
 
--- [[ PANEL PROFILE USER (YANG DIPERBARUI) ]]
+
+-- [[ 🎬 SEGMEN ANIMASI INTRO MODERN 🎬 ]]
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Name = "IntroFrame"
+IntroFrame.Size = UDim2.new(0, 230, 0, 400)
+IntroFrame.Position = UDim2.new(0.5, -115, 0.5, -200)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18) -- Warna background intro sedikit lebih gelap
+IntroFrame.BorderSizePixel = 0
+IntroFrame.Parent = ScreenGui
+
+local IntroCorner = Instance.new("UICorner")
+IntroCorner.CornerRadius = UDim.new(0, 12)
+IntroCorner.Parent = IntroFrame
+
+local IntroStroke = Instance.new("UIStroke")
+IntroStroke.Thickness = 2
+IntroStroke.Color = Color3.fromRGB(0, 200, 255)
+IntroStroke.Parent = IntroFrame
+
+-- Element Logo (Bentuk Lingkaran Bersinar)
+local IntroLogo = Instance.new("ImageLabel")
+IntroLogo.Name = "IntroLogo"
+IntroLogo.Size = UDim2.new(0, 70, 0, 70)
+IntroLogo.Position = UDim2.new(0.5, -35, 0.4, -35)
+IntroLogo.BackgroundTransparency = 1
+IntroLogo.Image = "rbxassetid://3570695787" -- Aset lingkaran loading melingkar keren
+IntroLogo.ImageColor3 = Color3.fromRGB(0, 200, 255)
+IntroLogo.ImageTransparency = 1 -- Mulai dari transparan
+IntroLogo.Parent = IntroFrame
+
+-- Teks di Bawah Logo
+local IntroText = Instance.new("TextLabel")
+IntroText.Name = "IntroText"
+IntroText.Size = UDim2.new(1, 0, 0, 30)
+IntroText.Position = UDim2.new(0, 0, 0.4, 45)
+IntroText.BackgroundTransparency = 1
+IntroText.Text = "SPYZYY SYSTEM"
+IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
+IntroText.Font = Enum.Font.GothamBold
+IntroText.TextSize = 16
+IntroText.TextTransparency = 1 -- Mulai dari transparan
+IntroText.Parent = IntroFrame
+
+
+-- [[ PANEL PROFILE USER ]]
 local InfoPanel = Instance.new("Frame")
-InfoPanel.Size = UDim2.new(0, 206, 0, 85) -- Ukuran diperbesar untuk profil lengkap
+InfoPanel.Size = UDim2.new(0, 206, 0, 85)
 InfoPanel.Position = UDim2.new(0, 12, 0, 40)
 InfoPanel.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
 InfoPanel.BorderSizePixel = 0
@@ -100,20 +148,16 @@ local UsernameLabel = CreateProfileLabel("🆔 User: @" .. LocalPlayer.Name, Col
 local AgeLabel = CreateProfileLabel("📅 Umur Akun: Dihitung...", Color3.fromRGB(0, 200, 255), 3)
 local BioLabel = CreateProfileLabel("📝 Bio: Loading...", Color3.fromRGB(150, 150, 150), 4)
 
--- Mengambil Data Profil Lengkap
 task.spawn(function()
     pcall(function()
         NameLabel.Text = "👤 Name: " .. LocalPlayer.DisplayName
-        
-        -- Hitung Umur Akun (Hari)
         local accountAge = LocalPlayer.AccountAge
         AgeLabel.Text = "📅 Umur Akun: " .. accountAge .. " Hari"
         
-        -- Ambil Bio Resmi Player
         local playerInfo = UserService:GetUserInfosByUserIdsAsync({LocalPlayer.UserId})
         if playerInfo and playerInfo[1] and playerInfo[1].Description ~= "" then
             local bio = playerInfo[1].Description
-            if #bio > 22 then bio = string.sub(bio, 1, 20) .. ".." end -- Batasi teks bio agar rapi
+            if #bio > 22 then bio = string.sub(bio, 1, 20) .. ".." end
             BioLabel.Text = "📝 Bio: " .. bio
         else
             BioLabel.Text = "📝 Bio: (Kosong)"
@@ -121,35 +165,65 @@ task.spawn(function()
     end)
 end)
 
--- [[ TOMBOL & ELEMENT GUI SCRIPT ]]
+-- [[ ELEMENT PASTE LIST ]]
+local ListLabel = Instance.new("TextLabel")
+ListLabel.Size = UDim2.new(1, -24, 0, 20)
+ListLabel.Position = UDim2.new(0, 12, 0, 200)
+ListLabel.BackgroundTransparency = 1
+ListLabel.Text = "File MOBILE Terdeteksi:"
+ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+ListLabel.TextXAlignment = Enum.TextXAlignment.Left
+ListLabel.Font = Enum.Font.SourceSansSemibold
+ListLabel.TextSize = 11
+ListLabel.Parent = MainFrame
+
+-- [[ TOMBOL PILIH JENIS (MOBILE / PC) ]]
+local FormatButton = Instance.new("TextButton")
+FormatButton.Size = UDim2.new(0, 206, 0, 25)
+FormatButton.Position = UDim2.new(0, 12, 0, 132)
+FormatButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+FormatButton.TextColor3 = Color3.fromRGB(255, 200, 0)
+FormatButton.Text = "📱 JENIS: MOBILE"
+FormatButton.Font = Enum.Font.SourceSansBold
+FormatButton.TextSize = 12
+FormatButton.Parent = MainFrame
+
+local FormatCorner = Instance.new("UICorner")
+FormatCorner.CornerRadius = UDim.new(0, 6)
+FormatCorner.Parent = FormatButton
+
+FormatButton.MouseButton1Click:Connect(function()
+    if SaveMode == "JSON" then
+        SaveMode = "RBXM"
+        FormatButton.Text = "💻 JENIS: PC"
+        FormatButton.TextColor3 = Color3.fromRGB(0, 200, 255)
+        ListLabel.Text = "File PC Tidak Bisa Di-paste di Sini!"
+    else
+        SaveMode = "JSON"
+        FormatButton.Text = "📱 JENIS: MOBILE"
+        FormatButton.TextColor3 = Color3.fromRGB(255, 200, 0)
+        ListLabel.Text = "File MOBILE Terdeteksi:"
+    end
+end)
+
+-- [[ TOMBOL UTAMA COPY MAP ]]
 local CopyButton = Instance.new("TextButton")
-CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 135) -- Posisi disesuaikan dengan info panel baru
+CopyButton.Size = UDim2.new(0, 206, 0, 32)
+CopyButton.Position = UDim2.new(0, 12, 0, 163)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
 CopyButton.Font = Enum.Font.SourceSansBold
-CopyButton.TextSize = 12
+CopyButton.TextSize = 13
 CopyButton.Parent = MainFrame
 
 local CopyButtonCorner = Instance.new("UICorner")
 CopyButtonCorner.CornerRadius = UDim.new(0, 6)
 CopyButtonCorner.Parent = CopyButton
 
-local ListLabel = Instance.new("TextLabel")
-ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 175)
-ListLabel.BackgroundTransparency = 1
-ListLabel.Text = "Pilih Data File Untuk Di-paste:"
-ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-ListLabel.TextXAlignment = Enum.TextXAlignment.Left
-ListLabel.Font = Enum.Font.SourceSansSemibold
-ListLabel.TextSize = 12
-ListLabel.Parent = MainFrame
-
 local ListScroll = Instance.new("ScrollingFrame")
-ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 195)
+ListScroll.Size = UDim2.new(0, 206, 0, 135)
+ListScroll.Position = UDim2.new(0, 12, 0, 220)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -166,7 +240,7 @@ ListLayout.Parent = ListScroll
 
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 320)
+RefreshButton.Position = UDim2.new(0, 12, 0, 363)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -177,7 +251,6 @@ RefreshButton.Parent = MainFrame
 local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
-
 
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
@@ -200,6 +273,44 @@ MainFrame.InputChanged:Connect(function(input)
 end)
 UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
+end)
+
+-- [[ JALANKAN PROSES ANIMASI INTRO SECARA ASINKRONUS ]]
+task.spawn(function()
+    -- 1. Fade-in logo dan teks
+    local fadeInInfo = TweenInfo.new(1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    TweenService:Create(IntroLogo, fadeInInfo, {ImageTransparency = 0}):Play()
+    TweenService:Create(IntroText, fadeInInfo, {TextTransparency = 0}):Play()
+    
+    -- 2. Rotasi Logo (Efek Berputar Tanpa Henti selama Intro)
+    local rotateInfo = TweenInfo.new(1.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+    local logoRotation = TweenService:Create(IntroLogo, rotateInfo, {Rotation = 360})
+    logoRotation:Play()
+    
+    task.wait(2.5) -- Lama waktu nunggu intro (2.5 detik)
+    
+    -- 3. Fade-out panel Intro (Menghilang halus)
+    local fadeOutInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(IntroLogo, fadeOutInfo, {ImageTransparency = 1}):Play()
+    TweenService:Create(IntroText, fadeOutInfo, {TextTransparency = 1}):Play()
+    local frameFade = TweenService:Create(IntroFrame, fadeOutInfo, {BackgroundTransparency = 1, Size = UDim2.new(0,0,0,0), Position = UDim2.new(0.5,0,0.5,0)})
+    TweenService:Create(IntroStroke, fadeOutInfo, {Transparency = 1}):Play()
+    
+    frameFade:Play()
+    frameFade.Completed:Connect(function()
+        logoRotation:Cancel() -- Matikan putaran logo
+        IntroFrame:Destroy()   -- Hapus panel intro dari memori agar ringan
+        
+        -- 4. Munculkan Menu Utama (MainFrame)
+        MainFrame.Visible = true
+        -- Efek pop-up halus untuk menu utama
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 230, 0, 400),
+            Position = UDim2.new(0.5, -115, 0.5, -200)
+        }):Play()
+    end)
 end)
 
 
@@ -229,6 +340,36 @@ local AllowedSupportClasses = {
 }
 
 CopyButton.MouseButton1Click:Connect(function()
+    local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
+    
+    if SaveMode == "RBXM" then
+        if not saveinstance then
+            CopyButton.Text = "Executor Tak Support PC Mode!"
+            return
+        end
+        CopyButton.Text = "📦 Saving PC File (.rbxm)..."
+        task.wait(0.1)
+        
+        local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".rbxm"
+        local success, err = pcall(function()
+            saveinstance({object = workspace, mode = "optimized", noscripts = true, filepath = fileName})
+        end)
+        
+        if success then
+            CopyButton.Text = "✅ PC FILE SAVED!"
+        else
+            local backupSuccess = pcall(function() saveinstance(workspace) end)
+            if backupSuccess then
+                CopyButton.Text = "✅ Check Folder Workspace"
+            else
+                CopyButton.Text = "❌ PC Mode Gagal!"
+            end
+        end
+        task.wait(2)
+        CopyButton.Text = "COPYY OM"
+        return
+    end
+
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
@@ -238,7 +379,6 @@ CopyButton.MouseButton1Click:Connect(function()
 
     local SaveData = {}
     local count = 0
-    local uniqueID = math.random(1000, 9999) .. "_" .. os.date("%H%M%S")
     local fileName = FILE_PREFIX .. GameName .. "_" .. uniqueID .. ".json"
     local objectsToScan = TargetFolder:GetDescendants()
     
@@ -368,7 +508,7 @@ _G.UpdatePasteList = function()
                         
                         local function findOrCreateParent(relativePath)
                             local currentParent = MasterFolder
-                            for _, pathInfo in ipairs(relativePath) do
+                            for _, pathInfo in ip his ipairs(relativePath) do
                                 local found = currentParent:FindFirstChild(pathInfo.Name)
                                 if not found then
                                     if pathInfo.ClassName == "Folder" or pathInfo.ClassName == "Model" then
@@ -444,6 +584,4 @@ _G.UpdatePasteList = function()
 end
 
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
-
--- Jalankan inisialisasi list awal
 _G.UpdatePasteList()
