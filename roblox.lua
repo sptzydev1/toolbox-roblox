@@ -4,10 +4,12 @@ local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
+
+-- Memastikan player dan PlayerGui sudah sepenuhnya termuat
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- URL GITHUB RAW WHITELIST ANDA
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txtheads/main/akses.txt"
+-- URL GITHUB RAW WHITELIST ANDA (Sudah diperbaiki dari typo sebelumnya)
+local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
@@ -59,7 +61,7 @@ Title.TextSize = 15
 Title.Parent = MainFrame
 
 -- ==================================================
--- [BARU] PANEL INFO AKUN & MASA AKTIF
+-- PANEL INFO AKUN & MASA AKTIF
 -- ==================================================
 local InfoPanel = Instance.new("Frame")
 InfoPanel.Size = UDim2.new(0, 206, 0, 45)
@@ -81,7 +83,7 @@ local UserLabel = Instance.new("TextLabel")
 UserLabel.Size = UDim2.new(1, -10, 0, 22)
 UserLabel.Position = UDim2.new(0, 8, 0, 2)
 UserLabel.BackgroundTransparency = 1
-UserLabel.Text = "User: Mengambil data..."
+UserLabel.Text = "User: Menunggu Verifikasi..."
 UserLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 UserLabel.Font = Enum.Font.SourceSansSemibold
 UserLabel.TextSize = 12
@@ -93,7 +95,7 @@ TimeLabel.Size = UDim2.new(1, -10, 0, 22)
 TimeLabel.Position = UDim2.new(0, 8, 0, 20)
 TimeLabel.BackgroundTransparency = 1
 TimeLabel.Text = "Masa Aktif: --:--:--"
-TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+TimeLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 TimeLabel.Font = Enum.Font.SourceSansBold
 TimeLabel.TextSize = 12
 TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -102,7 +104,7 @@ TimeLabel.Parent = InfoPanel
 -- Posisi elemen di bawahnya diturunkan agar tidak bertabrakan
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 95) -- Disesuaikan
+CopyButton.Position = UDim2.new(0, 12, 0, 95)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
@@ -116,7 +118,7 @@ CopyButtonCorner.Parent = CopyButton
 
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 135) -- Disesuaikan
+ListLabel.Position = UDim2.new(0, 12, 0, 135)
 ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -127,7 +129,7 @@ ListLabel.Parent = MainFrame
 
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 155) -- Disesuaikan
+ListScroll.Position = UDim2.new(0, 12, 0, 155)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -144,7 +146,7 @@ ListLayout.Parent = ListScroll
 
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 280) -- Disesuaikan
+RefreshButton.Position = UDim2.new(0, 12, 0, 280)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -505,7 +507,7 @@ RefreshButton.MouseButton1Click:Connect(function()
 end)
 
 -- ==================================================
--- [BARU] LOGIKA INTEGRASI INTEGRATED WHITELIST & LIVE TIME
+-- LOGIKA INTEGRASI INTEGRATED WHITELIST & LIVE TIME
 -- ==================================================
 local function konversiKeDetik(waktuStr)
     local angka = tonumber(waktuStr:match("%d+"))
@@ -535,13 +537,26 @@ local function formatWaktu(totalDetik)
 end
 
 local function cekAksesDanMulai()
+    -- 1. TUNGGU GAME SELESAI LOADING PENUH
+    if not game:IsLoaded() then
+        game.Loaded:Wait()
+    end
+    task.wait(2) -- Memberi jeda ekstra aman agar jaringan client siap
+
     local usernameSekarang = LocalPlayer.Name
-    local sukses, isiFile = pcall(function()
-        return game:HttpGet(GITHUB_RAW_URL)
-    end)
+    local sukses, isiFile = false, nil
+    
+    -- 2. SISTEM ANTI-GAGAL (COBA KEMBALI SAMPAI 5 KALI)
+    for i = 1, 5 do
+        sukses, isiFile = pcall(function()
+            return game:HttpGet(GITHUB_RAW_URL)
+        end)
+        if sukses and isiFile then break end
+        task.wait(2) -- Jeda waktu sebelum mencoba kembali
+    end
     
     if not sukses or not isiFile then
-        LocalPlayer:Kick("Gagal memverifikasi lisensi. Periksa koneksi internet.")
+        LocalPlayer:Kick("Gagal memverifikasi lisensi (Koneksi bermasalah). Silakan re-execute kembali script Anda.")
         return
     end
     
@@ -567,7 +582,7 @@ local function cekAksesDanMulai()
 
     -- JIKA LOLOS WHITELIST:
     UserLabel.Text = "👤 User: " .. usernameSekarang
-    ScreenGui.Enabled = true -- Munculkan GUI Map Copy
+    ScreenGui.Enabled = true -- Tampilkan GUI Utama
     _G.UpdatePasteList()
     
     -- Loop Hitung Mundur Live Waktu Aktif di GUI
