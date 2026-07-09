@@ -20,7 +20,7 @@ task.spawn(function()
     end)
 end)
 
-local FILE_PREFIX = "GameCopyV2_"
+local FILE_PREFIX = "GameCopyV4_"
 local TargetFolder = workspace
 
 -- [[ DEKLARASI GUI UTAMA MAP COPY (MODERN DARK THEME) ]]
@@ -188,7 +188,35 @@ MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.Us
 UIS.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
 
--- [[ MODERN ENGINE: SUPPORT ALL MODES & PARTS ]]
+-- [[ DAFTAR PROPERTI UTAMA UNTUK DILAKUKAN REFLEKSI ]]
+local PropertiesToSerialize = {
+    "Size", "CFrame", "Transparency", "Reflectance", "Anchored", "CanCollide", "CastShadow",
+    "MeshId", "TextureId", "AssetId", "Texture", "Face", "Color", "Brightness", "Range", 
+    "Enabled", "Scale", "Offset", "SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", 
+    "SkyboxUp", "SunTextureId", "MoonTextureId", "Density", "Friction", "Elasticity", "Color3",
+    "Material", "Shape", "ShadowIntensity"
+}
+
+local function serializeValue(val)
+    if typeof(val) == "Vector3" then return {val.X, val.Y, val.Z}
+    elseif typeof(val) == "CFrame" then return {val:GetComponents()}
+    elseif typeof(val) == "Color3" then return {val.R * 255, val.G * 255, val.B * 255}
+    elseif typeof(val) == "EnumItem" then return {Type = tostring(val.EnumType), Name = val.Name}
+    else return val end
+end
+
+local function deserializeValue(val)
+    if type(val) == "table" then
+        if val.Type and val.Name then
+            local success, enumGroup = pcall(function() return Enum[val.Type:gsub("Enum%.", "")] end)
+            if success and enumGroup then return enumGroup[val.Name] end
+        elseif #val == 3 then return Vector3.new(unpack(val))
+        elseif #val == 12 then return CFrame.new(unpack(val))
+        end
+    end
+    return val
+end
+
 local function getCleanRelativePath(obj)
     local path = {}
     local current = obj.Parent
@@ -206,6 +234,7 @@ local function checkPlayerChar(obj)
     return false
 end
 
+-- [[ CORE SCAN ENGINE ]]
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then CopyButton.Text = "Executor Tidak Mendukung File System!"; return end
     CopyButton.Text = "🔍 Memindai Semua Objek..."; task.wait(0.2)
@@ -232,42 +261,24 @@ CopyButton.MouseButton1Click:Connect(function()
                 Properties = {}
             }
             
-            pcall(function()
-                -- Ekstraksi Properti Universal untuk Semua Jenis BasePart (Part, MeshPart, Truss, Union, dll)
-                if obj:IsA("BasePart") then
-                    itemData.Properties.Size = {obj.Size.X, obj.Size.Y, obj.Size.Z}
-                    itemData.Properties.CFrame = {obj.CFrame:GetComponents()}
-                    itemData.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                    itemData.Properties.Material = obj.Material.Name
-                    itemData.Properties.Transparency = obj.Transparency
-                    itemData.Properties.Reflectance = obj.Reflectance
-                    itemData.Properties.Anchored = obj.Anchored
-                    itemData.Properties.CanCollide = obj.CanCollide
-                    itemData.Properties.CastShadow = obj.CastShadow
-                    
-                    if obj:IsA("MeshPart") then
-                        itemData.Properties.MeshId = obj.MeshId
-                        itemData.Properties.TextureId = obj.TextureId
-                    elseif obj:IsA("UnionOperation") then
-                        itemData.Properties.AssetId = obj.AssetId
+            -- Ekstraksi otomatis properti asli menggunakan Reflection Loop
+            for _, prop in pairs(PropertiesToSerialize) do
+                pcall(function()
+                    local val = obj[prop]
+                    if val ~= nil then
+                        itemData.Properties[prop] = serializeValue(val)
                     end
-                -- Properti Tambahan untuk Visual & Efek Pencahayaan
-                elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                    itemData.Properties.Texture = obj.Texture
-                    itemData.Properties.Transparency = obj.Transparency
-                    itemData.Properties.Face = obj.Face.Name
-                localColor = obj:IsA("Light") and pcall(function()
-                    itemData.Properties.Color = {obj.Color.r * 255, obj.Color.g * 255, obj.Color.b * 255}
-                    itemData.Properties.Brightness = obj.Brightness
-                    itemData.Properties.Range = obj.Range
-                    itemData.Properties.Enabled = obj.Enabled
                 end)
-                elseif obj:IsA("SpecialMesh") or obj:IsA("BlockMesh") or obj:IsA("CylinderMesh") then
-                    pcall(function() itemData.Properties.MeshId = obj.MeshId end)
-                    pcall(function() itemData.Properties.TextureId = obj.TextureId end)
-                    itemData.Properties.Scale = {obj.Scale.X, obj.Scale.Y, obj.Scale.Z}
-                end
-            end)
+            end
+            
+            -- Kasus Khusus: Pivot Model Bawaan
+            if obj:IsA("Model") then
+                pcall(function()
+                    itemData.Properties["WorldPivot"] = serializeValue(obj:GetPivot())
+                    if obj.PrimaryPart then itemData.Properties["PrimaryPartName"] = obj.PrimaryPart.Name end
+                end)
+            end
+
             table.insert(RawData, itemData)
         end
     end
@@ -279,6 +290,7 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
+-- [[ CORE PASTE ENGINE ]]
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do if child:IsA("Frame") then child:Destroy() end end
     if not listfiles then return end
@@ -332,7 +344,7 @@ _G.UpdatePasteList = function()
                         local fileContent = readfile(file)
                         local loadedData = HttpService:JSONDecode(fileContent)
                         
-                        -- STRATEGI PENTING: Urutkan kedalaman (Depth) agar Parent selalu dibuat duluan sebelum Child!
+                        -- Mengurutkan kedalaman struktur
                         table.sort(loadedData, function(a, b) return (a.Depth or 0) < (b.Depth or 0) end)
                         
                         local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName) or Instance.new("Folder")
@@ -356,12 +368,15 @@ _G.UpdatePasteList = function()
                         end
                         
                         local total = #loadedData
+                        local createdInstances = {}
+                        
                         for index, data in ipairs(loadedData) do
                             pcall(function()
                                 local targetParent = buildStructure(data.RelativePath)
-                                
-                                -- Jika folder/model struktur sudah ada, tidak perlu di-instantiate ulang agar rapi
-                                if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then return end
+                                if targetParent:FindFirstChild(data.Name) and (data.ClassName == "Folder" or data.ClassName == "Model") then 
+                                    if data.ClassName == "Model" then createdInstances[data.Name] = targetParent:FindFirstChild(data.Name) end
+                                    return 
+                                end
                                 
                                 if index % 300 == 0 then
                                     FileSelectBtn.Text = "🔨 Memasang: [" .. index .. "/" .. total .. "]"
@@ -370,43 +385,38 @@ _G.UpdatePasteList = function()
                                 
                                 local newObj = Instance.new(data.ClassName)
                                 newObj.Name = data.Name
-                                local props = data.Properties or {}
+                                createdInstances[data.Name] = newObj
                                 
-                                -- Rekonstruksi Properti Fisik Akurat
-                                if newObj:IsA("BasePart") and props.CFrame then
-                                    newObj.Size = Vector3.new(unpack(props.Size))
-                                    newObj.CFrame = CFrame.new(unpack(props.CFrame))
-                                    newObj.Color = Color3.fromRGB(unpack(props.Color))
-                                    pcall(function() newObj.Material = Enum.Material[props.Material] end)
-                                    newObj.Transparency = props.Transparency
-                                    newObj.Reflectance = props.Reflectance
-                                    newObj.Anchored = props.Anchored
-                                    newObj.CanCollide = props.CanCollide
-                                    if props.CastShadow ~= nil then newObj.CastShadow = props.CastShadow end
-                                    
-                                    if newObj:IsA("MeshPart") and props.MeshId then
-                                        newObj.MeshId = props.MeshId
-                                        newObj.TextureId = props.TextureId
-                                    elseif newObj:IsA("UnionOperation") and props.AssetId then
-                                        newObj.AssetId = props.AssetId
+                                -- Pengembalian Properti Asli Secara Otomatis & Dinamis
+                                local props = data.Properties or {}
+                                for propName, propValue in pairs(props) do
+                                    if propName ~= "WorldPivot" and propName ~= "PrimaryPartName" then
+                                        pcall(function()
+                                            newObj[propName] = deserializeValue(propValue)
+                                        end)
                                     end
-                                elseif newObj:IsA("Decal") or newObj:IsA("Texture") then
-                                    newObj.Texture = props.Texture
-                                    newObj.Transparency = props.Transparency
-                                    pcall(function() newObj.Face = Enum.NormalId[props.Face] end)
-                                elseif newObj:IsA("Light") then
-                                    newObj.Color = Color3.fromRGB(unpack(props.Color))
-                                    newObj.Brightness = props.Brightness
-                                    newObj.Range = props.Range
-                                    newObj.Enabled = props.Enabled
-                                elseif newObj:IsA("SpecialMesh") and props.MeshId then
-                                    newObj.MeshId = props.MeshId
-                                    if props.TextureId then newObj.TextureId = props.TextureId end
-                                    newObj.Scale = Vector3.new(unpack(props.Scale))
+                                end
+                                
+                                -- Penyesuaian khusus untuk Pivot Model asli
+                                if newObj:IsA("Model") and props.WorldPivot then
+                                    pcall(function() newObj:PivotTo(deserializeValue(props.WorldPivot)) end)
                                 end
                                 
                                 newObj.Parent = targetParent
                             end)
+                        end
+                        
+                        -- Sinkronisasi Akhir PrimaryPart asli
+                        for _, data in ipairs(loadedData) do
+                            if data.ClassName == "Model" and data.Properties.PrimaryPartName then
+                                pcall(function()
+                                    local modelObj = createdInstances[data.Name]
+                                    if modelObj then
+                                        local pPart = modelObj:FindFirstChild(data.Properties.PrimaryPartName, true)
+                                        if pPart then modelObj.PrimaryPart = pPart end
+                                    end
+                                end)
+                            end
                         end
                     end)
                     
