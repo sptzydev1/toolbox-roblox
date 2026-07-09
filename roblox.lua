@@ -49,7 +49,7 @@ if not HasAccess then
     StarterGui:SetCore("SendNotification", {
         Title = "❌ AKSES DITOLAK ❌",
         Text = "Username tidak terdaftar atau executor Anda memblokir koneksi HTTP!",
-        Duration = 10
+        Duration = 30
     })
     return -- Menghentikan script
 end
