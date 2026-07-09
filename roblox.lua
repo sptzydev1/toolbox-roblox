@@ -480,56 +480,39 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ UPDATE: SISTEM VERIFIKASI USER-ONLY (PERMANEN) ]]
+-- [[ FIX UPDATE: LIVE LOOP BACKGROUND VERIFICATION (ANTI IN-GAME BYPASS) ]]
 -- ====================================================================
+local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%s%c]", "")
+
+-- Fungsi internal untuk memeriksa status pendaftaran ke Github secara realtime
+local function cekStatusWhitelist()
+    local sukses, isiFile = pcall(function()
+        -- Menggunakan Anti-Cache agar Github selalu mengirimkan file terbaru yang baru diperbarui
+        return game:HttpGet(GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999))
+    end)
+    
+    -- Jika gagal memuat/koneksi bermasalah saat ditengah game, kita anggap true sementara agar user tidak ter-kick acak saat internet down sesaat
+    if not sukses or not isiFile or #isiFile < 2 then 
+        return true 
+    end
+    
+    for baris in string.gmatch(isiFile, "[^\r\n]+") do
+        local userBersih = baris:gsub("[,%s%c]", "")
+        if #userBersih > 0 and string.lower(userBersih) == usernameSekarang then
+            return true -- User masih terdaftar sah
+        end
+    end
+    return false -- User sudah dihapus dari Github
+end
+
+-- Thread Utama Verifikasi & Live Monitoring
 task.spawn(function()
     LoadText.Text = "Verifying License..."
     LoadStroke.Color = Color3.fromRGB(255, 200, 0)
     
-    -- Ambil username player & bersihkan spasi serta huruf kecilkan otomatis
-    local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%s%c]", "")
-    local sukses, isiFile = false, nil
-    local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
-    
-    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
-    for i = 1, 4 do
-        sukses, isiFile = pcall(function()
-            return game:HttpGet(bypassUrl)
-        end)
-        if sukses and isiFile and #isiFile > 2 then break end
-        task.wait(0.6)
-    end
-    
-    -- JIKA SERVER REJECT ATAU DOWN
-    if not sukses or not isiFile or #isiFile < 2 then
-        animasiAktif = false
-        LoadIcon.Text = "❌"
-        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        LoadText.Text = "Connection Failed!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Gagal mengambil data akses dari GitHub. Pastikan Internet Anda stabil.")
-        return
-    end
-    
-    local terdaftar = false
-    
-    -- Pemrosesan Baris Whitelist Secara Akurat (User Only)
-    for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        -- Bersihkan spasi, koma, dan karakter kontrol tak terlihat (\r) pada baris
-        local userBersih = baris:gsub("[,%s%c]", "")
-        
-        if #userBersih > 0 then
-            if string.lower(userBersih) == usernameSekarang then
-                terdaftar = true
-                break
-            end
-        end
-    end
-    
-    -- KONDISI JIKA TIDAK TERDAFTAR
-    if not terdaftar then
+    -- Pengecekan Pertama saat Menjalankan Script
+    task.wait(0.5)
+    if not cekStatusWhitelist() then
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
@@ -541,7 +524,7 @@ task.spawn(function()
         return
     end
 
-    -- KONDISI JIKA SUKSES
+    -- KONDISI JIKA SUKSES LOG IN DI AWAL
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -549,10 +532,23 @@ task.spawn(function()
     LoadText.Text = "Access Granted!"
     task.wait(0.8)
     
-    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
-    StatusLabel.Text = "💎 Status: PERMANENT ACCESS"
+    StatusLabel.Text = "💎 Status: ACTIVE ACCESS"
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
+    
+    -- BARU: Loop Background Otomatis Berjalan Setiap 10 Detik Sekali
+    while true do
+        task.wait(10) 
+        local masihAktif = cekStatusWhitelist()
+        
+        if not masihAktif then
+            -- Aksi Instan: Matikan UI, Hancurkan GUI, lalu Kick Player!
+            ScreenGui.Enabled = false
+            ScreenGui:Destroy()
+            LocalPlayer:Kick("\n[LIGENS KADALUARSA / EXPIRED]\n\nUsername Anda telah dihapus dari sistem Whitelist oleh Admin.\nHubungi Admin untuk mendaftar kembali: @sptzyy")
+            break
+        end
+    end
 end)
