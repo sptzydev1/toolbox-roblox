@@ -6,54 +6,6 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- [[ FITUR CEK LISENSI (UPDATED) ]]
-local LicenseUrl = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
-local HasAccess = false
-
--- Menggunakan pcall ganda untuk memastikan kecocokan fungsi executor
-local success, response = pcall(function()
-    -- Coba gunakan game:HttpGet terlebih dahulu
-    return game:HttpGet(LicenseUrl)
-end)
-
-if not success then
-    -- Alternatif jika executor menggunakan request standar (syn.request / http_request / request)
-    success, response = pcall(function()
-        local req = (syn and syn.request) or (http and http.request) or request
-        if req then
-            local res = req({
-                Url = LicenseUrl,
-                Method = "GET"
-            })
-            return res.Body
-        end
-    end)
-end
-
-if success and response then
-    -- Memisahkan teks berdasarkan baris baru dan membersihkan spasi/karakter aneh
-    for username in string.gmatch(response, "[^\r\n]+") do
-        local cleanUsername = string.gsub(username, "%s+", "") -- Hapus spasi kosong
-        if string.lower(LocalPlayer.Name) == string.lower(cleanUsername) then
-            HasAccess = true
-            break
-        end
-    end
-else
-    warn("Gagal menghubungkan ke server lisensi. Mencoba bypass aman...")
-end
-
--- Jika benar-benar tidak memiliki akses atau gagal total
-if not HasAccess then
-    local StarterGui = game:GetService("StarterGui")
-    StarterGui:SetCore("SendNotification", {
-        Title = "❌ AKSES DITOLAK ❌",
-        Text = "Username tidak terdaftar atau executor Anda memblokir koneksi HTTP!",
-        Duration = 30
-    })
-    return -- Menghentikan script
-end
-
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
 pcall(function()
