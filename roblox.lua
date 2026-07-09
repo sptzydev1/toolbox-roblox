@@ -14,7 +14,6 @@ if PlayerGui:FindFirstChild("SpyzyyCopyGuiV2") then PlayerGui.SpyzyyCopyGuiV2:De
 
 -- URL GITHUB RAW WHITELIST ANDA
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
-local targetTimestampGlobal = nil -- Menyimpan timestamp terbaru secara global untuk sinkronisasi
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
@@ -178,7 +177,7 @@ local TimeLabel = Instance.new("TextLabel")
 TimeLabel.Size = UDim2.new(1, -10, 0, 22)
 TimeLabel.Position = UDim2.new(0, 8, 0, 20)
 TimeLabel.BackgroundTransparency = 1
-TimeLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 150) -- Diubah jadi warna hijau sukses
 TimeLabel.Font = Enum.Font.SourceSansBold
 TimeLabel.TextSize = 12
 TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -504,125 +503,84 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM & LIVE SYNC BERBASIS JAM WIB ]]
+-- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (TANPA WAKTU) ]]
 -- ====================================================================
-local function parsingTanggalKeTimestamp(strTanggal)
-    local hari, bulan, tahun, jam, menit, detik = string.match(strTanggal, "(%d+)-(%d+)-(%d+)_(%d+):(%d+):(%d+)")
-    if hari and bulan and tahun and jam and menit and detik then
-        return os.time({
-            day = tonumber(hari),
-            month = tonumber(bulan),
-            year = tonumber(tahun),
-            hour = tonumber(jam),
-            min = tonumber(menit),
-            sec = tonumber(detik)
-        })
-    end
-    return nil
-end
-
-local function formatWaktu(totalDetik)
-    if totalDetik <= 0 then return "EXPIRED" end
-    local hari = math.floor(totalDetik / 86400)
-    local sisa = totalDetik % 86400
-    local jam = math.floor(sisa / 3600)
-    sisa = sisa % 3600
-    local menit = math.floor(sisa / 60)
-    local detik = sisa % 60
-    if hari > 0 then
-        return string.format("%dd %02dh %02dm %02ds", hari, jam, menit, detik)
-    else
-        return string.format("%02dh %02dm %02ds", jam, menit, detik)
-    end
-end
-
--- Fungsi Senyap Ambil Data Terbaru dari GitHub (Sync di Background)
-local function dapatkanTimestampTerbaru()
-    local usernameSekarang = string.lower(LocalPlayer.Name)
-    local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
-    local sukses, isiFile = pcall(function() return game:HttpGet(bypassUrl) end)
-    
-    if sukses and isiFile and #isiFile > 3 then
-        for baris in string.gmatch(isiFile, "[^\r\n]+") do
-            local dataBersih = baris:gsub(",", " ")
-            local user, formatWaktuStr = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
-            if user and formatWaktuStr and string.lower(user) == usernameSekarang then
-                return parsingTanggalKeTimestamp(formatWaktuStr)
-            end
-        end
-    end
-    return nil
-end
-
 local function PeriksaWhitelist()
     animasiAktif = true
     RefreshWLButton.Visible = false
     LoadIcon.Text = "⏳"
-    LoadText.Text = "Checking Global License (WIB)..."
+    LoadText.Text = "Verifying Username..."
     LoadStroke.Color = Color3.fromRGB(0, 200, 255)
     
-    local targetTimestamp = dapatkanTimestampTerbaru()
+    local usernameSekarang = string.lower(LocalPlayer.Name)
+    local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
+    local sukses, isiFile = pcall(function() return game:HttpGet(bypassUrl) end)
     
-    if not targetTimestamp then
+    if not sukses or not isiFile or #isiFile < 2 then
         animasiAktif = false
-        LoadIcon.Text = "⛔"
+        LoadIcon.Text = "❌"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "Not Whitelisted / Data Error!"
+        LoadText.Text = "Connection Failed!"
         RefreshWLButton.Visible = true
         return
     end
 
-    targetTimestampGlobal = targetTimestamp
-    local waktuSekarangWIB = os.time() + (7 * 3600) 
+    local terdaftar = false
     
-    if (targetTimestampGlobal - waktuSekarangWIB) <= 0 then
+    -- Membaca GitHub per baris
+    for baris in string.gmatch(isiFile, "[^\r\n]+") do
+        -- Membersihkan spasi di awal/akhir baris
+        local userDitemukan = string.match(baris, "%s*(%S+)%s*")
+        if userDitemukan and string.lower(userDitemukan) == usernameSekarang then
+            terdaftar = true
+            break
+        end
+    end
+    
+    if not terdaftar then
         animasiAktif = false
-        LoadIcon.Text = "⏰"
+        LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "License Expired! (Real-Time Block)"
+        LoadText.Text = "Not Whitelisted! Contact: @sptzyy"
+        RefreshWLButton.Visible = true
         return
     end
 
+    -- Jika Username Terdaftar
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
-    LoadText.Text = "Access Granted!"
+    LoadText.Text = "Welcome Back!"
     task.wait(0.8)
     
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
+    TimeLabel.Text = "👑 Status: PREMIUM USER" -- Mengganti teks sisa waktu menjadi status permanen
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- LOOP UTAMA: Hitung Mundur & Sinkronisasi Latar Belakang (Anti-Bug)
+    -- LOOP SINKRONISASI LATAR BELAKANG (Cek berkala setiap 30 detik apakah username dihapus admin)
     task.spawn(function()
-        local hitungDetikSync = 0
         while true do
-            local liveWaktuWIB = os.time() + (7 * 3600)
-            local liveSisa = targetTimestampGlobal - liveWaktuWIB
-            
-            -- Jika waktu habis secara real-time, kick instan!
-            if liveSisa <= 0 then 
-                ScreenGui.Enabled = false
-                LocalPlayer:Kick("Masa lisensi premium Anda telah berakhir!")
-                break 
-            end
-            
-            TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(liveSisa)
-            
-            -- Tiap 30 detik, cek diam-diam ke GitHub untuk sinkronisasi update terbaru
-            hitungDetikSync = hitungDetikSync + 1
-            if hitungDetikSync >= 30 then
-                hitungDetikSync = 0
-                task.spawn(function()
-                    local tBaru = dapatkanTimestampTerbaru()
-                    if tBaru then
-                        targetTimestampGlobal = tBaru -- Perbarui waktu secara live tanpa restart script!
+            task.wait(30)
+            local checkUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
+            local s, konten = pcall(function() return game:HttpGet(checkUrl) end)
+            if s and konten then
+                local masihAda = false
+                for b in string.gmatch(konten, "[^\r\n]+") do
+                    local u = string.match(b, "%s*(%S+)%s*")
+                    if u and string.lower(u) == usernameSekarang then
+                        masihAda = true
+                        break
                     end
-                end)
+                end
+                -- Jika nama dihapus dari GitHub saat game jalan, panel otomatis mati dan kick player!
+                if not masihAda then
+                    ScreenGui.Enabled = false
+                    LocalPlayer:Kick("Lisensi Anda telah dicabut oleh Admin!")
+                    break
+                end
             end
-            
-            task.wait(1)
         end
     end)
 end
