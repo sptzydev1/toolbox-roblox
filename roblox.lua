@@ -8,14 +8,10 @@ local LocalPlayer = Players.LocalPlayer
 -- Proteksi Instan PlayerGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.PlayerGui
 
--- ANTI-TUMPUK: Hancurkan GUI lama jika mendeteksi execute ulang
-if PlayerGui:FindFirstChild("SpyzyyLoader") then PlayerGui.SpyzyyLoader:Destroy() end
-if PlayerGui:FindFirstChild("SpyzyyCopyGuiV2") then PlayerGui.SpyzyyCopyGuiV2:Destroy() end
-
--- URL GITHUB RAW WHITELIST ANDA (PASTIKAN MODAL LINK "RAW")
+-- URL GITHUB RAW WHITELIST ANDA
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
--- Mendapatkan Nama Game Secara Otomatis
+-- Mendapatkan Nama Game Secara Otomatis (Aman dari Delay)
 local GameName = "Unknown_Game"
 task.spawn(function()
     pcall(function()
@@ -39,8 +35,8 @@ LoadGui.Parent = PlayerGui
 
 local LoadFrame = Instance.new("Frame")
 LoadFrame.Name = "LoadFrame"
-LoadFrame.Size = UDim2.new(0, 220, 0, 130)
-LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -65)
+LoadFrame.Size = UDim2.new(0, 220, 0, 100)
+LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 LoadFrame.BorderSizePixel = 0
 LoadFrame.Parent = LoadGui
@@ -73,50 +69,27 @@ LoadText.TextSize = 13
 LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
 LoadText.Parent = LoadFrame
 
-local RefreshWLButton = Instance.new("TextButton")
-RefreshWLButton.Size = UDim2.new(0, 180, 0, 25)
-RefreshWLButton.Position = UDim2.new(0.5, -90, 0, 95)
-RefreshWLButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-RefreshWLButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-RefreshWLButton.Text = "🔄 Coba Cek Ulang"
-RefreshWLButton.Font = Enum.Font.SourceSansBold
-RefreshWLButton.TextSize = 12
-RefreshWLButton.Visible = false
-RefreshWLButton.Parent = LoadFrame
-
-local RefreshWLCorner = Instance.new("UICorner")
-RefreshWLCorner.CornerRadius = UDim.new(0, 5)
-RefreshWLCorner.Parent = RefreshWLButton
-
-local RefreshWLStroke = Instance.new("UIStroke")
-RefreshWLStroke.Thickness = 1
-RefreshWLStroke.Color = Color3.fromRGB(80, 80, 90)
-RefreshWLStroke.Parent = RefreshWLButton
-
+-- Loop Animasi Putar Icon & Teks Berkedip
 local animasiAktif = true
 task.spawn(function()
     local rotasi = 0
-    while true do
-        if animasiAktif then
-            rotasi = (rotasi + 10) % 360
-            LoadIcon.Rotation = rotasi
-            LoadText.TextTransparency = 0.3
-            task.wait(0.15)
-            LoadIcon.Rotation = rotasi
-            LoadText.TextTransparency = 0
-            task.wait(0.15)
-        else
-            LoadIcon.Rotation = 0
-            task.wait(0.5)
-        end
+    while animasiAktif do
+        rotasi = (rotasi + 10) % 360
+        LoadIcon.Rotation = rotasi
+        LoadText.TextTransparency = 0.3
+        task.wait(0.15)
+        LoadIcon.Rotation = rotasi
+        LoadText.TextTransparency = 0
+        task.wait(0.15)
     end
 end)
+
 
 -- [[ DEKLARASI GUI UTAMA MAP COPY ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false
+ScreenGui.Enabled = false 
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
@@ -173,15 +146,15 @@ UserLabel.TextSize = 12
 UserLabel.TextXAlignment = Enum.TextXAlignment.Left
 UserLabel.Parent = InfoPanel
 
-local TimeLabel = Instance.new("TextLabel")
-TimeLabel.Size = UDim2.new(1, -10, 0, 22)
-TimeLabel.Position = UDim2.new(0, 8, 0, 20)
-TimeLabel.BackgroundTransparency = 1
-TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-TimeLabel.Font = Enum.Font.SourceSansBold
-TimeLabel.TextSize = 12
-TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-TimeLabel.Parent = InfoPanel
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -10, 0, 22)
+StatusLabel.Position = UDim2.new(0, 8, 0, 20)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+StatusLabel.Font = Enum.Font.SourceSansBold
+StatusLabel.TextSize = 12
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Parent = InfoPanel
 
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 206, 0, 35)
@@ -239,6 +212,7 @@ local RefreshCorner = Instance.new("UICorner")
 RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
 
+
 -- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
@@ -261,6 +235,7 @@ end)
 UIS.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
+
 
 -- [[ CORE ENGINE COPY/PASTE ]]
 local function getRelativePath(obj)
@@ -365,9 +340,11 @@ _G.UpdatePasteList = function()
     if not listfiles then return end
     
     local files = pcall(listfiles, "") and listfiles("") or {}
+    local anyFile = false
     
     for _, file in pairs(files) do
         if file:match(FILE_PREFIX) and file:match("%.json$") then
+            anyFile = true
             local cleanName = file:gsub(FILE_PREFIX, ""):gsub("%.json", ""):gsub(".*/", "")
             
             local ItemFrame = Instance.new("Frame")
@@ -503,92 +480,79 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (FIX ANTI-SPASI) ]]
+-- [[ UPDATE: SISTEM VERIFIKASI USER-ONLY (PERMANEN) ]]
 -- ====================================================================
-local function PeriksaWhitelist()
-    animasiAktif = true
-    RefreshWLButton.Visible = false
-    LoadIcon.Text = "⏳"
-    LoadText.Text = "Verifying Username..."
-    LoadStroke.Color = Color3.fromRGB(0, 200, 255)
+task.spawn(function()
+    LoadText.Text = "Verifying License..."
+    LoadStroke.Color = Color3.fromRGB(255, 200, 0)
     
-    -- Ambil Nama Player & Bersihkan dari space kiri/kanan + buat jadi lowercase
-    local usernameSekarang = string.lower(LocalPlayer.Name):match("^%s*(.-)%s*$")
-    
-    -- Bypass Cache Roblox HttpGet
+    -- Ambil username player & bersihkan spasi serta huruf kecilkan otomatis
+    local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%s%c]", "")
+    local sukses, isiFile = false, nil
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
-    local sukses, isiFile = pcall(function() return game:HttpGet(bypassUrl) end)
     
+    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
+    for i = 1, 4 do
+        sukses, isiFile = pcall(function()
+            return game:HttpGet(bypassUrl)
+        end)
+        if sukses and isiFile and #isiFile > 2 then break end
+        task.wait(0.6)
+    end
+    
+    -- JIKA SERVER REJECT ATAU DOWN
     if not sukses or not isiFile or #isiFile < 2 then
         animasiAktif = false
         LoadIcon.Text = "❌"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "Connection Failed / URL Salah!"
-        RefreshWLButton.Visible = true
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "Connection Failed!"
+        task.wait(1.5)
+        LoadGui:Destroy()
+        LocalPlayer:Kick("Gagal mengambil data akses dari GitHub. Pastikan Internet Anda stabil.")
         return
     end
-
+    
     local terdaftar = false
     
-    -- Membaca GitHub per baris + Bersihkan spasi gaib (Trimming)
+    -- Pemrosesan Baris Whitelist Secara Akurat (User Only)
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        local userDitemukan = string.match(baris, "^%s*(.-)%s*$")
-        if userDitemukan and #userDitemukan > 0 then
-            if string.lower(userDitemukan) == usernameSekarang then
+        -- Bersihkan spasi, koma, dan karakter kontrol tak terlihat (\r) pada baris
+        local userBersih = baris:gsub("[,%s%c]", "")
+        
+        if #userBersih > 0 then
+            if string.lower(userBersih) == usernameSekarang then
                 terdaftar = true
                 break
             end
         end
     end
     
-    -- Hasil Pengecekan
+    -- KONDISI JIKA TIDAK TERDAFTAR
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "Nama ("..LocalPlayer.Name..") Belum Terdaftar!"
-        RefreshWLButton.Visible = true
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "Access Denied!"
+        task.wait(1.5)
+        LoadGui:Destroy()
+        LocalPlayer:Kick("Akun (" .. LocalPlayer.Name .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
         return
     end
 
-    -- Sukses Login
+    -- KONDISI JIKA SUKSES
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
-    LoadText.Text = "Welcome Back!"
+    LoadText.TextColor3 = Color3.fromRGB(0, 255, 150)
+    LoadText.Text = "Access Granted!"
     task.wait(0.8)
     
+    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
-    TimeLabel.Text = "👑 Status: PREMIUM USER"
+    StatusLabel.Text = "💎 Status: PERMANENT ACCESS"
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
-    
-    -- BACKGROUND LOOP MONITORING (Setiap 30 Detik)
-    task.spawn(function()
-        while true do
-            task.wait(30)
-            local checkUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
-            local s, konten = pcall(function() return game:HttpGet(checkUrl) end)
-            if s and konten then
-                local masihAda = false
-                for b in string.gmatch(konten, "[^\r\n]+") do
-                    local u = string.match(b, "^%s*(.-)%s*$")
-                    if u and string.lower(u) == usernameSekarang then
-                        masihAda = true
-                        break
-                    end
-                end
-                
-                if not masihAda then
-                    ScreenGui.Enabled = false
-                    LocalPlayer:Kick("Masa aktif lisensi premium Anda telah berakhir/dicabut!")
-                    break
-                end
-            end
-        end
-    end)
-end
-
-RefreshWLButton.MouseButton1Click:Connect(PeriksaWhitelist)
-task.spawn(PeriksaWhitelist)
+end)
