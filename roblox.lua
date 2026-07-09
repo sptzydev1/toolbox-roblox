@@ -12,7 +12,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.Player
 if PlayerGui:FindFirstChild("SpyzyyLoader") then PlayerGui.SpyzyyLoader:Destroy() end
 if PlayerGui:FindFirstChild("SpyzyyCopyGuiV2") then PlayerGui.SpyzyyCopyGuiV2:Destroy() end
 
--- URL GITHUB RAW WHITELIST ANDA
+-- URL GITHUB RAW WHITELIST ANDA (PASTIKAN MODAL LINK "RAW")
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
 -- Mendapatkan Nama Game Secara Otomatis
@@ -78,7 +78,7 @@ RefreshWLButton.Size = UDim2.new(0, 180, 0, 25)
 RefreshWLButton.Position = UDim2.new(0.5, -90, 0, 95)
 RefreshWLButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 RefreshWLButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-RefreshWLButton.Text = "🔄 Check Whitelist Again"
+RefreshWLButton.Text = "🔄 Coba Cek Ulang"
 RefreshWLButton.Font = Enum.Font.SourceSansBold
 RefreshWLButton.TextSize = 12
 RefreshWLButton.Visible = false
@@ -503,7 +503,7 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (AUTOMATIC LOGIC) ]]
+-- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (FIX ANTI-SPASI) ]]
 -- ====================================================================
 local function PeriksaWhitelist()
     animasiAktif = true
@@ -512,7 +512,10 @@ local function PeriksaWhitelist()
     LoadText.Text = "Verifying Username..."
     LoadStroke.Color = Color3.fromRGB(0, 200, 255)
     
-    local usernameSekarang = string.lower(LocalPlayer.Name)
+    -- Ambil Nama Player & Bersihkan dari space kiri/kanan + buat jadi lowercase
+    local usernameSekarang = string.lower(LocalPlayer.Name):match("^%s*(.-)%s*$")
+    
+    -- Bypass Cache Roblox HttpGet
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     local sukses, isiFile = pcall(function() return game:HttpGet(bypassUrl) end)
     
@@ -520,33 +523,35 @@ local function PeriksaWhitelist()
         animasiAktif = false
         LoadIcon.Text = "❌"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "Connection Failed!"
+        LoadText.Text = "Connection Failed / URL Salah!"
         RefreshWLButton.Visible = true
         return
     end
 
     local terdaftar = false
     
-    -- Membaca GitHub per baris (Proses)
+    -- Membaca GitHub per baris + Bersihkan spasi gaib (Trimming)
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        local userDitemukan = string.match(baris, "%s*(%S+)%s*")
-        if userDitemukan and string.lower(userDitemukan) == usernameSekarang then
-            terdaftar = true
-            break
+        local userDitemukan = string.match(baris, "^%s*(.-)%s*$")
+        if userDitemukan and #userDitemukan > 0 then
+            if string.lower(userDitemukan) == usernameSekarang then
+                terdaftar = true
+                break
+            end
         end
     end
     
-    -- Hasil Pengecekan Awal
+    -- Hasil Pengecekan
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "Not Whitelisted! Contact: @sptzyy"
+        LoadText.Text = "Nama ("..LocalPlayer.Name..") Belum Terdaftar!"
         RefreshWLButton.Visible = true
         return
     end
 
-    -- Jika Username Sukses Terdaftar
+    -- Sukses Login
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -559,23 +564,22 @@ local function PeriksaWhitelist()
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- LOOP SINKRONISASI LATAR BELAKANG (Logika Deteksi Expired Otomatis secara Real-Time)
+    -- BACKGROUND LOOP MONITORING (Setiap 30 Detik)
     task.spawn(function()
         while true do
-            task.wait(30) -- Berjalan otomatis di latar belakang setiap 30 detik
+            task.wait(30)
             local checkUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
             local s, konten = pcall(function() return game:HttpGet(checkUrl) end)
             if s and konten then
                 local masihAda = false
                 for b in string.gmatch(konten, "[^\r\n]+") do
-                    local u = string.match(b, "%s*(%S+)%s*")
+                    local u = string.match(b, "^%s*(.-)%s*$")
                     if u and string.lower(u) == usernameSekarang then
                         masihAda = true
                         break
                     end
                 end
                 
-                -- Jika nama dihapus dari GitHub, panel mati & kick instan!
                 if not masihAda then
                     ScreenGui.Enabled = false
                     LocalPlayer:Kick("Masa aktif lisensi premium Anda telah berakhir/dicabut!")
