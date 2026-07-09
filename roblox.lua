@@ -13,7 +13,7 @@ if PlayerGui:FindFirstChild("SpyzyyLoader") then PlayerGui.SpyzyyLoader:Destroy(
 if PlayerGui:FindFirstChild("SpyzyyCopyGuiV2") then PlayerGui.SpyzyyCopyGuiV2:Destroy() end
 
 -- URL GITHUB RAW WHITELIST ANDA (PASTIKAN MODAL LINK "RAW")
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txtheads/main/akses.txt"
+local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
