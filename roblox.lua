@@ -25,11 +25,71 @@ end)
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
--- [[ INSTANS DEKLARASI GUI ]]
+-- ==================================================
+-- [[ BARU: ANIMASI LOADING DI TENGAH LAYAR ]]
+-- ==================================================
+local LoadGui = Instance.new("ScreenGui")
+LoadGui.Name = "SpyzyyLoader"
+LoadGui.ResetOnSpawn = false
+LoadGui.Parent = PlayerGui
+
+local LoadFrame = Instance.new("Frame")
+LoadFrame.Name = "LoadFrame"
+LoadFrame.Size = UDim2.new(0, 220, 0, 100)
+LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
+LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+LoadFrame.BorderSizePixel = 0
+LoadFrame.Parent = LoadGui
+
+local LoadCorner = Instance.new("UICorner")
+LoadCorner.CornerRadius = UDim.new(0, 10)
+LoadCorner.Parent = LoadFrame
+
+local LoadStroke = Instance.new("UIStroke")
+LoadStroke.Thickness = 1.5
+LoadStroke.Color = Color3.fromRGB(0, 200, 255)
+LoadStroke.Parent = LoadFrame
+
+local LoadIcon = Instance.new("TextLabel")
+LoadIcon.Size = UDim2.new(0, 40, 0, 40)
+LoadIcon.Position = UDim2.new(0.5, -20, 0, 15)
+LoadIcon.BackgroundTransparency = 1
+LoadIcon.Text = "⏳"
+LoadIcon.TextSize = 25
+LoadIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoadIcon.Parent = LoadFrame
+
+local LoadText = Instance.new("TextLabel")
+LoadText.Size = UDim2.new(1, 0, 0, 25)
+LoadText.Position = UDim2.new(0, 0, 0, 60)
+LoadText.BackgroundTransparency = 1
+LoadText.Text = "Connecting to Server..."
+LoadText.Font = Enum.Font.SourceSansSemibold
+LoadText.TextSize = 13
+LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
+LoadText.Parent = LoadFrame
+
+-- Loop Animasi Putar Icon & Teks Berkedip
+local animasiAktif = true
+task.spawn(function()
+    local rotasi = 0
+    while animasiAktif do
+        rotasi = (rotasi + 10) % 360
+        LoadIcon.Rotation = rotasi
+        LoadText.TextTransparency = 0.3
+        task.wait(0.15)
+        LoadIcon.Rotation = rotasi
+        LoadText.TextTransparency = 0
+        task.wait(0.15)
+    end
+end)
+
+
+-- [[ DEKLARASI GUI UTAMA MAP COPY ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false -- Aktif jika whitelist lolos
+ScreenGui.Enabled = false -- Dimatikan dulu, aktif HANYA jika whitelist lolos
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
@@ -60,7 +120,6 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 15
 Title.Parent = MainFrame
 
--- [[ PANEL INFO AKUN ]]
 local InfoPanel = Instance.new("Frame")
 InfoPanel.Size = UDim2.new(0, 206, 0, 45)
 InfoPanel.Position = UDim2.new(0, 12, 0, 40)
@@ -81,8 +140,7 @@ local UserLabel = Instance.new("TextLabel")
 UserLabel.Size = UDim2.new(1, -10, 0, 22)
 UserLabel.Position = UDim2.new(0, 8, 0, 2)
 UserLabel.BackgroundTransparency = 1
-UserLabel.Text = "⚡ Mengunduh Lisensi..."
-UserLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+UserLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 UserLabel.Font = Enum.Font.SourceSansSemibold
 UserLabel.TextSize = 12
 UserLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -92,8 +150,7 @@ local TimeLabel = Instance.new("TextLabel")
 TimeLabel.Size = UDim2.new(1, -10, 0, 22)
 TimeLabel.Position = UDim2.new(0, 8, 0, 20)
 TimeLabel.BackgroundTransparency = 1
-TimeLabel.Text = "Masa Aktif: Menghubungkan..."
-TimeLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+TimeLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
 TimeLabel.Font = Enum.Font.SourceSansBold
 TimeLabel.TextSize = 12
 TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -156,7 +213,7 @@ RefreshCorner.CornerRadius = UDim.new(0, 4)
 RefreshCorner.Parent = RefreshButton
 
 
--- [[ LOGIKA DRAGGABLE (ANTI-LAG) ]]
+-- [[ LOGIKA DRAGGABLE ]]
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -180,7 +237,7 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 
--- [[ CORE ENGINE (ANTI-BUG) ]]
+-- [[ CORE ENGINE COPY/PASTE ]]
 local function getRelativePath(obj)
     local path = {}
     local current = obj.Parent
@@ -205,13 +262,11 @@ local AllowedSupportClasses = {
     ["Sky"] = true, ["Atmosphere"] = true, ["Clouds"] = true
 }
 
--- 1. PROSES COPY ANTI-BUG GAME CRASH
 CopyButton.MouseButton1Click:Connect(function()
     if not writefile then 
         CopyButton.Text = "Executor Tak Support!"
         return 
     end
-
     CopyButton.Text = "🔍 Scanning Map..."
     task.wait(0.1)
 
@@ -225,7 +280,6 @@ CopyButton.MouseButton1Click:Connect(function()
         if obj:IsA("Folder") or obj:IsA("Model") or obj:IsA("BasePart") or AllowedSupportClasses[obj.ClassName] then
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
-                
                 if count % 400 == 0 then 
                     CopyButton.Text = "📸 [" .. count .. "] Scanning..." 
                     task.wait() 
@@ -279,7 +333,6 @@ CopyButton.MouseButton1Click:Connect(function()
     _G.UpdatePasteList()
 end)
 
--- 2. PROSES REFRESH DAN PASTE ANTI-DELAY
 _G.UpdatePasteList = function()
     for _, child in pairs(ListScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextLabel") then child:Destroy() end
@@ -337,12 +390,10 @@ _G.UpdatePasteList = function()
             
             FileSelectBtn.MouseButton1Click:Connect(function()
                 FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-                
                 task.spawn(function()
                     local success, err = pcall(function()
                         local fileContent = readfile(file)
                         local loadedData = HttpService:JSONDecode(fileContent)
-                        
                         table.sort(loadedData, function(a, b) return (a.Depth or 0) < (b.Depth or 0) end)
                         
                         local MasterFolder = workspace:FindFirstChild("Paste_" .. cleanName) or Instance.new("Folder")
@@ -383,7 +434,6 @@ _G.UpdatePasteList = function()
                                 
                                 local newObj
                                 local props = data.Properties or {}
-                                
                                 if AllowedSupportClasses[data.ClassName] then
                                     newObj = Instance.new(data.ClassName)
                                     pcall(function() if props.Texture then newObj.Texture = props.Texture end end)
@@ -405,7 +455,6 @@ _G.UpdatePasteList = function()
                                     newObj.Anchored = props.Anchored
                                     newObj.CanCollide = props.CanCollide
                                 end
-                                
                                 newObj.Parent = targetParent
                             end)
                         end
@@ -431,7 +480,7 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM (SMART ENGINE - PARSING ANTI GAGAL) ]]
+-- [[ SISTEM VERIFIKASI PREMIUM + DYNAMIC CENTER LOADER ]]
 -- ====================================================================
 local function konversiKeDetik(waktuStr)
     local angka = tonumber(waktuStr:match("%d+"))
@@ -459,39 +508,43 @@ local function formatWaktu(totalDetik)
     end
 end
 
--- Thread Pengaman Eksekusi Instan
+-- Thread Utama Verifikasi & Kontrol Animasi Loading
 task.spawn(function()
+    LoadText.Text = "Verifying License..."
+    LoadStroke.Color = Color3.fromRGB(255, 200, 0)
+    
     local usernameSekarang = string.lower(LocalPlayer.Name)
     local sukses, isiFile = false, nil
-    
-    -- Bypass Cache dengan menambahkan parameter acak di belakang URL
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     
+    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
     for i = 1, 4 do
         sukses, isiFile = pcall(function()
             return game:HttpGet(bypassUrl)
         end)
         if sukses and isiFile and #isiFile > 3 then break end
-        task.wait(1)
+        task.wait(0.6)
     end
     
+    -- JIKA SERVER REJECT ATAU DOWN
     if not sukses or not isiFile or #isiFile < 3 then
-        UserLabel.Text = "❌ HTTP GitHub Gagal!"
-        TimeLabel.Text = "Silahkan Re-Execute!"
+        animasiAktif = false
+        LoadIcon.Text = "❌"
+        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "Connection Failed!"
         task.wait(1.5)
-        LocalPlayer:Kick("Gagal memproses HTTP dari GitHub Server. Pastikan URL benar atau internet Anda stabil.")
+        LoadGui:Destroy()
+        LocalPlayer:Kick("Gagal mengambil data akses dari GitHub. Pastikan Internet Anda stabil.")
         return
     end
     
     local terdaftar = false
     local durasiDetik = 0
     
-    -- BARU: Sistem parsing super fleksibel (Membagi per baris baru / newline)
-    -- Ini menjamin data terbaca walaupun Anda menulis pakai spasi acak atau tanda koma.
+    -- Pemrosesan String Anti-Bug
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        -- Bersihkan tanda koma di ujung text jika ada
         local dataBersih = baris:gsub(",", " ")
-        -- Tangkap kata pertama (username) dan kata kedua (waktu)
         local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
         
         if user and waktu then
@@ -503,20 +556,43 @@ task.spawn(function()
         end
     end
     
+    -- KONDISI JIKA TIDAK TERSEDIA / DI-TOLAK
     if not terdaftar then
+        animasiAktif = false
+        LoadIcon.Text = "⛔"
+        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "Access Denied!"
+        task.wait(1.5)
+        LoadGui:Destroy()
         LocalPlayer:Kick("Akun (" .. LocalPlayer.Name .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
         return
     elseif durasiDetik <= 0 then
+        animasiAktif = false
+        LoadIcon.Text = "⏰"
+        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
+        LoadText.Text = "License Expired!"
+        task.wait(1.5)
+        LoadGui:Destroy()
         LocalPlayer:Kick("Masa aktif Script Anda sudah Habis!\nHubungi Admin: @sptzyy")
         return
     end
 
-    -- SISTEM BERHASIL LOLOS VERIFIKASI (TAMPIL KILAT)
+    -- KONDISI JIKA SUKSES / DILANJUTKAN
+    animasiAktif = false
+    LoadIcon.Text = "✅"
+    LoadStroke.Color = Color3.fromRGB(0, 255, 150)
+    LoadText.TextColor3 = Color3.fromRGB(0, 255, 150)
+    LoadText.Text = "Access Granted!"
+    task.wait(0.8)
+    
+    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
+    LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- Live Counter tanpa menunda Frame Rate game utama
+    -- Jalankan Live Counter Masa Aktif
     while durasiDetik > 0 do
         TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
         task.wait(1)
