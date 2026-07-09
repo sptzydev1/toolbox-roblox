@@ -39,7 +39,7 @@ LoadFrame.Size = UDim2.new(0, 220, 0, 130)
 LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -65)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadGui -- Memastikan parent-nya adalah LoadGui, bukan dirinya sendiri!
+LoadFrame.Parent = LoadGui
 
 local LoadCorner = Instance.new("UICorner")
 LoadCorner.CornerRadius = UDim.new(0, 10)
@@ -506,17 +506,22 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM + DYNAMIC CENTER LOADER ]]
+-- [[ BARU: SISTEM VERIFIKASI PREMIUM BERBASIS JAM REAL-TIME GLOBAL ]]
 -- ====================================================================
-local function konversiKeDetik(waktuStr)
-    local angka = tonumber(waktuStr:match("%d+"))
-    local satuan = waktuStr:match("%a")
-    if not angka then return 0 end
-    if satuan == "d" then return angka * 86400
-    elseif satuan == "h" then return angka * 3600
-    elseif satuan == "m" then return angka * 60
-    elseif satuan == "s" then return angka
-    else return 0 end
+local function parsingTanggalKeTimestamp(strTanggal)
+    -- Format yang diterima: DD-MM-YYYY_HH:MM:SS
+    local hari, bulan, tahun, jam, menit, detik = string.match(strTanggal, "(%d+)-(%d+)-(%d+)_(%d+):(%d+):(%d+)")
+    if hari and bulan and tahun and jam and menit and detik then
+        return os.time({
+            day = tonumber(hari),
+            month = tonumber(bulan),
+            year = tonumber(tahun),
+            hour = tonumber(jam),
+            min = tonumber(menit),
+            sec = tonumber(detik)
+        })
+    end
+    return nil
 end
 
 local function formatWaktu(totalDetik)
@@ -534,12 +539,11 @@ local function formatWaktu(totalDetik)
     end
 end
 
--- Fungsi Utama untuk Cek Whitelist
 local function PeriksaWhitelist()
     animasiAktif = true
     RefreshWLButton.Visible = false
     LoadIcon.Text = "⏳"
-    LoadText.Text = "Verifying License..."
+    LoadText.Text = "Checking Global License..."
     LoadStroke.Color = Color3.fromRGB(0, 200, 255)
     LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
     
@@ -548,9 +552,7 @@ local function PeriksaWhitelist()
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     
     for i = 1, 4 do
-        sukses, isiFile = pcall(function()
-            return game:HttpGet(bypassUrl)
-        end)
+        sukses, isiFile = pcall(function() return game:HttpGet(bypassUrl) end)
         if sukses and isiFile and #isiFile > 3 then break end
         task.wait(0.5)
     end
@@ -566,16 +568,16 @@ local function PeriksaWhitelist()
     end
     
     local terdaftar = false
-    local durasiDetik = 0
+    local targetTimestamp = nil
     
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
         local dataBersih = baris:gsub(",", " ")
-        local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
+        local user, formatWaktuStr = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
         
-        if user and waktu then
+        if user and formatWaktuStr then
             if string.lower(user) == usernameSekarang then
                 terdaftar = true
-                durasiDetik = konversiKeDetik(waktu)
+                targetTimestamp = parsingTanggalKeTimestamp(formatWaktuStr)
                 break
             end
         end
@@ -589,16 +591,30 @@ local function PeriksaWhitelist()
         LoadText.Text = "Not Whitelisted! Contact: @sptzyy"
         RefreshWLButton.Visible = true
         return
-    elseif durasiDetik <= 0 then
+    elseif not targetTimestamp then
         animasiAktif = false
-        LoadIcon.Text = "⏰"
-        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        LoadText.Text = "License Expired! Contact: @sptzyy"
+        LoadIcon.Text = "⚙️"
+        LoadStroke.Color = Color3.fromRGB(255, 150, 0)
+        LoadText.Text = "GitHub Time Format Error!"
         RefreshWLButton.Visible = true
         return
     end
 
+    -- Hitung sisa waktu berdasarkan Waktu Real-Time Saat Ini
+    local waktuSekarang = os.time()
+    local sisaDurasi = targetTimestamp - waktuSekarang
+    
+    if sisaDurasi <= 0 then
+        animasiAktif = false
+        LoadIcon.Text = "⏰"
+        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "License Expired! (Real-Time Block)"
+        RefreshWLButton.Visible = true -- Tombol ini ditekan pun akan tetap ke-block karena jam dunia nyata terus berjalan
+        return
+    end
+
+    -- Jika Lolos Verifikasi
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -611,16 +627,22 @@ local function PeriksaWhitelist()
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
+    -- Hitung mundur live sisa waktu bermain
     task.spawn(function()
-        while durasiDetik > 0 do
-            TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
+        while true do
+            local liveWaktuSekarang = os.time()
+            local liveSisa = targetTimestamp - liveWaktuSekarang
+            
+            if liveSisa <= 0 then break end
+            
+            TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(liveSisa)
             task.wait(1)
-            durasiDetik = durasiDetik - 1
         end
-        TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
-        task.wait(0.3)
+        
+        -- KETIKA JAM DUNIA NYATA MELEWATI TARGET EXPIRATION
         ScreenGui.Enabled = false
-        LocalPlayer:Kick("Masa aktif bermain telah habis (Kadaluarsa)!")
+        TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
+        LocalPlayer:Kick("Masa lisensi premium Anda telah berakhir!")
     end)
 end
 
