@@ -26,7 +26,7 @@ local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
 -- ==================================================
--- [[ BARU: ANIMASI LOADING DI TENGAH LAYAR ]]
+-- [[ ANIMASI LOADING DI TENGAH LAYAR ]]
 -- ==================================================
 local LoadGui = Instance.new("ScreenGui")
 LoadGui.Name = "SpyzyyLoader"
@@ -506,10 +506,10 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ BARU: SISTEM VERIFIKASI PREMIUM BERBASIS JAM REAL-TIME GLOBAL ]]
+-- [[ SISTEM VERIFIKASI PREMIUM BERBASIS JAM WIB REAL-TIME ]]
 -- ====================================================================
 local function parsingTanggalKeTimestamp(strTanggal)
-    -- Format yang diterima: DD-MM-YYYY_HH:MM:SS
+    -- Format: DD-MM-YYYY_HH:MM:SS
     local hari, bulan, tahun, jam, menit, detik = string.match(strTanggal, "(%d+)-(%d+)-(%d+)_(%d+):(%d+):(%d+)")
     if hari and bulan and tahun and jam and menit and detik then
         return os.time({
@@ -543,7 +543,7 @@ local function PeriksaWhitelist()
     animasiAktif = true
     RefreshWLButton.Visible = false
     LoadIcon.Text = "⏳"
-    LoadText.Text = "Checking Global License..."
+    LoadText.Text = "Checking Global License (WIB)..."
     LoadStroke.Color = Color3.fromRGB(0, 200, 255)
     LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
     
@@ -600,9 +600,11 @@ local function PeriksaWhitelist()
         return
     end
 
-    -- Hitung sisa waktu berdasarkan Waktu Real-Time Saat Ini
-    local waktuSekarang = os.time()
-    local sisaDurasi = targetTimestamp - waktuSekarang
+    -- =======================================================
+    -- FIX JURUS UTAMA: KONVERSI JAM SERVER KE WIB (UTC + 7 JAM)
+    -- =======================================================
+    local waktuSekarangWIB = os.time() + (7 * 3600) 
+    local sisaDurasi = targetTimestamp - waktuSekarangWIB
     
     if sisaDurasi <= 0 then
         animasiAktif = false
@@ -610,11 +612,11 @@ local function PeriksaWhitelist()
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
         LoadText.Text = "License Expired! (Real-Time Block)"
-        RefreshWLButton.Visible = true -- Tombol ini ditekan pun akan tetap ke-block karena jam dunia nyata terus berjalan
+        RefreshWLButton.Visible = false -- Sembunyikan total agar tidak bisa diclick ulang
         return
     end
 
-    -- Jika Lolos Verifikasi
+    -- Jika Lolos Verifikasi Waktu
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -627,11 +629,11 @@ local function PeriksaWhitelist()
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- Hitung mundur live sisa waktu bermain
+    -- Hitung mundur live sisa waktu bermain berbasis WIB asli
     task.spawn(function()
         while true do
-            local liveWaktuSekarang = os.time()
-            local liveSisa = targetTimestamp - liveWaktuSekarang
+            local liveWaktuWIB = os.time() + (7 * 3600)
+            local liveSisa = targetTimestamp - liveWaktuWIB
             
             if liveSisa <= 0 then break end
             
@@ -639,7 +641,7 @@ local function PeriksaWhitelist()
             task.wait(1)
         end
         
-        -- KETIKA JAM DUNIA NYATA MELEWATI TARGET EXPIRATION
+        -- KETIKA JAM SEKARANG MELEWATI TARGET DI GITHUB
         ScreenGui.Enabled = false
         TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
         LocalPlayer:Kick("Masa lisensi premium Anda telah berakhir!")
