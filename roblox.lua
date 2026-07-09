@@ -81,7 +81,7 @@ local UserLabel = Instance.new("TextLabel")
 UserLabel.Size = UDim2.new(1, -10, 0, 22)
 UserLabel.Position = UDim2.new(0, 8, 0, 2)
 UserLabel.BackgroundTransparency = 1
-UserLabel.Text = "⚡ Memverifikasi Sistem..."
+UserLabel.Text = "⚡ Mengunduh Lisensi..."
 UserLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
 UserLabel.Font = Enum.Font.SourceSansSemibold
 UserLabel.TextSize = 12
@@ -226,7 +226,6 @@ CopyButton.MouseButton1Click:Connect(function()
             if not obj:IsDescendantOf(Players) and not obj:IsA("Camera") and not obj:IsA("Terrain") and not isAPlayerCharacter(obj) then
                 count = count + 1
                 
-                -- Optimalisasi Pemrosesan agar FPS tidak drop ke 0
                 if count % 400 == 0 then 
                     CopyButton.Text = "📸 [" .. count .. "] Scanning..." 
                     task.wait() 
@@ -431,9 +430,9 @@ end
 
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
--- ==================================================
--- [[ SISTEM VERIFIKASI PREMIUM (ANTI-DELAY & BUG) ]]
--- ==================================================
+-- ====================================================================
+-- [[ SISTEM VERIFIKASI PREMIUM (SMART ENGINE - PARSING ANTI GAGAL) ]]
+-- ====================================================================
 local function konversiKeDetik(waktuStr)
     local angka = tonumber(waktuStr:match("%d+"))
     local satuan = waktuStr:match("%a")
@@ -460,42 +459,52 @@ local function formatWaktu(totalDetik)
     end
 end
 
--- Thread Pengaman Eksekusi Instan (Anti Delay/Kick sembarangan)
+-- Thread Pengaman Eksekusi Instan
 task.spawn(function()
-    local usernameSekarang = LocalPlayer.Name
+    local usernameSekarang = string.lower(LocalPlayer.Name)
     local sukses, isiFile = false, nil
     
-    -- Request Kilat dengan Proteksi Loop Pendek (Maksimal 3 detik total)
-    for i = 1, 3 do
+    -- Bypass Cache dengan menambahkan parameter acak di belakang URL
+    local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
+    
+    for i = 1, 4 do
         sukses, isiFile = pcall(function()
-            return game:HttpGet(GITHUB_RAW_URL)
+            return game:HttpGet(bypassUrl)
         end)
-        if sukses and isiFile then break end
-        task.wait(0.8)
+        if sukses and isiFile and #isiFile > 3 then break end
+        task.wait(1)
     end
     
-    if not sukses or not isiFile then
-        UserLabel.Text = "❌ Jaringan Gagal!"
+    if not sukses or not isiFile or #isiFile < 3 then
+        UserLabel.Text = "❌ HTTP GitHub Gagal!"
         TimeLabel.Text = "Silahkan Re-Execute!"
-        task.wait(1)
-        LocalPlayer:Kick("Gagal memproses HTTP dari GitHub Server. Gunakan ulang script!")
+        task.wait(1.5)
+        LocalPlayer:Kick("Gagal memproses HTTP dari GitHub Server. Pastikan URL benar atau internet Anda stabil.")
         return
     end
     
     local terdaftar = false
     local durasiDetik = 0
     
-    for dataUser in string.gmatch(isiFile, "[^,]+") do
-        local user, waktu = string.match(dataUser, "^%s*(%S+)%s+(%S+)%s*$")
-        if user and string.lower(user) == string.lower(usernameSekarang) then
-            terdaftar = true
-            durasiDetik = konversiKeDetik(waktu)
-            break
+    -- BARU: Sistem parsing super fleksibel (Membagi per baris baru / newline)
+    -- Ini menjamin data terbaca walaupun Anda menulis pakai spasi acak atau tanda koma.
+    for baris in string.gmatch(isiFile, "[^\r\n]+") do
+        -- Bersihkan tanda koma di ujung text jika ada
+        local dataBersih = baris:gsub(",", " ")
+        -- Tangkap kata pertama (username) dan kata kedua (waktu)
+        local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
+        
+        if user and waktu then
+            if string.lower(user) == usernameSekarang then
+                terdaftar = true
+                durasiDetik = konversiKeDetik(waktu)
+                break
+            end
         end
     end
     
     if not terdaftar then
-        LocalPlayer:Kick("Akun (" .. usernameSekarang .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
+        LocalPlayer:Kick("Akun (" .. LocalPlayer.Name .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
         return
     elseif durasiDetik <= 0 then
         LocalPlayer:Kick("Masa aktif Script Anda sudah Habis!\nHubungi Admin: @sptzyy")
@@ -503,7 +512,7 @@ task.spawn(function()
     end
 
     -- SISTEM BERHASIL LOLOS VERIFIKASI (TAMPIL KILAT)
-    UserLabel.Text = "👤 User: " .. usernameSekarang
+    UserLabel.Text = "👤 User: " .. LocalPlayer.Name
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
