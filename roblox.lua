@@ -3,13 +3,11 @@ local HttpService = game:GetService("HttpService")
 local UIS = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
+local UserService = game:GetService("UserService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Proteksi Instan PlayerGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.PlayerGui
-
--- URL GITHUB RAW WHITELIST ANDA
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
 -- Mendapatkan Nama Game Secara Otomatis (Aman dari Delay)
 local GameName = "Unknown_Game"
@@ -25,77 +23,17 @@ end)
 local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
--- ==================================================
--- [[ BARU: ANIMASI LOADING DI TENGAH LAYAR ]]
--- ==================================================
-local LoadGui = Instance.new("ScreenGui")
-LoadGui.Name = "SpyzyyLoader"
-LoadGui.ResetOnSpawn = false
-LoadGui.Parent = PlayerGui
-
-local LoadFrame = Instance.new("Frame")
-LoadFrame.Name = "LoadFrame"
-LoadFrame.Size = UDim2.new(0, 220, 0, 100)
-LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
-LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadGui
-
-local LoadCorner = Instance.new("UICorner")
-LoadCorner.CornerRadius = UDim.new(0, 10)
-LoadCorner.Parent = LoadFrame
-
-local LoadStroke = Instance.new("UIStroke")
-LoadStroke.Thickness = 1.5
-LoadStroke.Color = Color3.fromRGB(0, 200, 255)
-LoadStroke.Parent = LoadFrame
-
-local LoadIcon = Instance.new("TextLabel")
-LoadIcon.Size = UDim2.new(0, 40, 0, 40)
-LoadIcon.Position = UDim2.new(0.5, -20, 0, 15)
-LoadIcon.BackgroundTransparency = 1
-LoadIcon.Text = "⏳"
-LoadIcon.TextSize = 25
-LoadIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-LoadIcon.Parent = LoadFrame
-
-local LoadText = Instance.new("TextLabel")
-LoadText.Size = UDim2.new(1, 0, 0, 25)
-LoadText.Position = UDim2.new(0, 0, 0, 60)
-LoadText.BackgroundTransparency = 1
-LoadText.Text = "Connecting to Server..."
-LoadText.Font = Enum.Font.SourceSansSemibold
-LoadText.TextSize = 13
-LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
-LoadText.Parent = LoadFrame
-
--- Loop Animasi Putar Icon & Teks Berkedip
-local animasiAktif = true
-task.spawn(function()
-    local rotasi = 0
-    while animasiAktif do
-        rotasi = (rotasi + 10) % 360
-        LoadIcon.Rotation = rotasi
-        LoadText.TextTransparency = 0.3
-        task.wait(0.15)
-        LoadIcon.Rotation = rotasi
-        LoadText.TextTransparency = 0
-        task.wait(0.15)
-    end
-end)
-
-
 -- [[ DEKLARASI GUI UTAMA MAP COPY ]]
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false -- Dimatikan dulu, aktif HANYA jika whitelist lolos
+ScreenGui.Enabled = true -- Langsung aktif tanpa check lisensi
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 320)
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -160)
+MainFrame.Size = UDim2.new(0, 230, 0, 360) -- Ukuran ditinggikan sedikit agar info profile muat
+MainFrame.Position = UDim2.new(0.5, -115, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -120,8 +58,9 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 15
 Title.Parent = MainFrame
 
+-- [[ PANEL PROFILE USER (YANG DIPERBARUI) ]]
 local InfoPanel = Instance.new("Frame")
-InfoPanel.Size = UDim2.new(0, 206, 0, 45)
+InfoPanel.Size = UDim2.new(0, 206, 0, 85) -- Ukuran diperbesar untuk profil lengkap
 InfoPanel.Position = UDim2.new(0, 12, 0, 40)
 InfoPanel.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
 InfoPanel.BorderSizePixel = 0
@@ -136,29 +75,56 @@ InfoPanelStroke.Thickness = 1
 InfoPanelStroke.Color = Color3.fromRGB(50, 50, 60)
 InfoPanelStroke.Parent = InfoPanel
 
-local UserLabel = Instance.new("TextLabel")
-UserLabel.Size = UDim2.new(1, -10, 0, 22)
-UserLabel.Position = UDim2.new(0, 8, 0, 2)
-UserLabel.BackgroundTransparency = 1
-UserLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-UserLabel.Font = Enum.Font.SourceSansSemibold
-UserLabel.TextSize = 12
-UserLabel.TextXAlignment = Enum.TextXAlignment.Left
-UserLabel.Parent = InfoPanel
+local UserLayout = Instance.new("UIListLayout")
+UserLayout.Padding = UDim.new(0, 2)
+UserLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UserLayout.Parent = InfoPanel
 
-local TimeLabel = Instance.new("TextLabel")
-TimeLabel.Size = UDim2.new(1, -10, 0, 22)
-TimeLabel.Position = UDim2.new(0, 8, 0, 20)
-TimeLabel.BackgroundTransparency = 1
-TimeLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-TimeLabel.Font = Enum.Font.SourceSansBold
-TimeLabel.TextSize = 12
-TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-TimeLabel.Parent = InfoPanel
+local function CreateProfileLabel(text, color, order)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 18)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    label.Font = Enum.Font.SourceSansSemibold
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = text
+    label.LayoutOrder = order
+    label.Parent = InfoPanel
+    return label
+end
 
+local NameLabel = CreateProfileLabel("👤 Name: Loading...", Color3.fromRGB(255, 255, 255), 1)
+local UsernameLabel = CreateProfileLabel("🆔 User: @" .. LocalPlayer.Name, Color3.fromRGB(180, 180, 180), 2)
+local AgeLabel = CreateProfileLabel("📅 Umur Akun: Dihitung...", Color3.fromRGB(0, 200, 255), 3)
+local BioLabel = CreateProfileLabel("📝 Bio: Loading...", Color3.fromRGB(150, 150, 150), 4)
+
+-- Mengambil Data Profil Lengkap
+task.spawn(function()
+    pcall(function()
+        NameLabel.Text = "👤 Name: " .. LocalPlayer.DisplayName
+        
+        -- Hitung Umur Akun (Hari)
+        local accountAge = LocalPlayer.AccountAge
+        AgeLabel.Text = "📅 Umur Akun: " .. accountAge .. " Hari"
+        
+        -- Ambil Bio Resmi Player
+        local playerInfo = UserService:GetUserInfosByUserIdsAsync({LocalPlayer.UserId})
+        if playerInfo and playerInfo[1] and playerInfo[1].Description ~= "" then
+            local bio = playerInfo[1].Description
+            if #bio > 22 then bio = string.sub(bio, 1, 20) .. ".." end -- Batasi teks bio agar rapi
+            BioLabel.Text = "📝 Bio: " .. bio
+        else
+            BioLabel.Text = "📝 Bio: (Kosong)"
+        end
+    end)
+end)
+
+-- [[ TOMBOL & ELEMENT GUI SCRIPT ]]
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 95)
+CopyButton.Position = UDim2.new(0, 12, 0, 135) -- Posisi disesuaikan dengan info panel baru
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
@@ -172,7 +138,7 @@ CopyButtonCorner.Parent = CopyButton
 
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 135)
+ListLabel.Position = UDim2.new(0, 12, 0, 175)
 ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Pilih Data File Untuk Di-paste:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -183,7 +149,7 @@ ListLabel.Parent = MainFrame
 
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 155)
+ListScroll.Position = UDim2.new(0, 12, 0, 195)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -200,7 +166,7 @@ ListLayout.Parent = ListScroll
 
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 280)
+RefreshButton.Position = UDim2.new(0, 12, 0, 320)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 RefreshButton.Text = "🔄 Refresh List File"
@@ -479,127 +445,5 @@ end
 
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
--- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM + DYNAMIC CENTER LOADER ]]
--- ====================================================================
-local function konversiKeDetik(waktuStr)
-    local angka = tonumber(waktuStr:match("%d+"))
-    local satuan = waktuStr:match("%a")
-    if not angka then return 0 end
-    if satuan == "d" then return angka * 86400
-    elseif satuan == "h" then return angka * 3600
-    elseif satuan == "m" then return angka * 60
-    elseif satuan == "s" then return angka
-    else return 0 end
-end
-
-local function formatWaktu(totalDetik)
-    if totalDetik <= 0 then return "EXPIRED" end
-    local hari = math.floor(totalDetik / 86400)
-    local sisa = totalDetik % 86400
-    local jam = math.floor(sisa / 3600)
-    sisa = sisa % 3600
-    local menit = math.floor(sisa / 60)
-    local detik = sisa % 60
-    if hari > 0 then
-        return string.format("%dd %02dh %02dm %02ds", hari, jam, menit, detik)
-    else
-        return string.format("%02dh %02dm %02ds", jam, menit, detik)
-    end
-end
-
--- Thread Utama Verifikasi & Kontrol Animasi Loading
-task.spawn(function()
-    LoadText.Text = "Verifying License..."
-    LoadStroke.Color = Color3.fromRGB(255, 200, 0)
-    
-    local usernameSekarang = string.lower(LocalPlayer.Name)
-    local sukses, isiFile = false, nil
-    local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
-    
-    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
-    for i = 1, 4 do
-        sukses, isiFile = pcall(function()
-            return game:HttpGet(bypassUrl)
-        end)
-        if sukses and isiFile and #isiFile > 3 then break end
-        task.wait(0.6)
-    end
-    
-    -- JIKA SERVER REJECT ATAU DOWN
-    if not sukses or not isiFile or #isiFile < 3 then
-        animasiAktif = false
-        LoadIcon.Text = "❌"
-        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        LoadText.Text = "Connection Failed!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Gagal mengambil data akses dari GitHub. Pastikan Internet Anda stabil.")
-        return
-    end
-    
-    local terdaftar = false
-    local durasiDetik = 0
-    
-    -- Pemrosesan String Anti-Bug
-    for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        local dataBersih = baris:gsub(",", " ")
-        local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
-        
-        if user and waktu then
-            if string.lower(user) == usernameSekarang then
-                terdaftar = true
-                durasiDetik = konversiKeDetik(waktu)
-                break
-            end
-        end
-    end
-    
-    -- KONDISI JIKA TIDAK TERSEDIA / DI-TOLAK
-    if not terdaftar then
-        animasiAktif = false
-        LoadIcon.Text = "⛔"
-        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        LoadText.Text = "Access Denied!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Akun (" .. LocalPlayer.Name .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
-        return
-    elseif durasiDetik <= 0 then
-        animasiAktif = false
-        LoadIcon.Text = "⏰"
-        LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "License Expired!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Masa aktif Script Anda sudah Habis!\nHubungi Admin: @sptzyy")
-        return
-    end
-
-    -- KONDISI JIKA SUKSES / DILANJUTKAN
-    animasiAktif = false
-    LoadIcon.Text = "✅"
-    LoadStroke.Color = Color3.fromRGB(0, 255, 150)
-    LoadText.TextColor3 = Color3.fromRGB(0, 255, 150)
-    LoadText.Text = "Access Granted!"
-    task.wait(0.8)
-    
-    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
-    LoadGui:Destroy()
-    UserLabel.Text = "👤 User: " .. LocalPlayer.Name
-    ScreenGui.Enabled = true
-    _G.UpdatePasteList()
-    
-    -- Jalankan Live Counter Masa Aktif
-    while durasiDetik > 0 do
-        TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
-        task.wait(1)
-        durasiDetik = durasiDetik - 1
-    end
-    
-    TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
-    task.wait(0.3)
-    LocalPlayer:Kick("Masa aktif bermain telah habis (Kadaluarsa)!")
-end)
+-- Jalankan inisialisasi list awal
+_G.UpdatePasteList()
