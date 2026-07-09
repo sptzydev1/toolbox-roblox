@@ -26,7 +26,7 @@ local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
 -- ==================================================
--- [[ BARU: ANIMASI LOADING DI TENGAH LAYAR ]]
+-- [[ ANIMASI LOADING DI TENGAH LAYAR ]]
 -- ==================================================
 local LoadGui = Instance.new("ScreenGui")
 LoadGui.Name = "SpyzyyLoader"
@@ -39,7 +39,7 @@ LoadFrame.Size = UDim2.new(0, 220, 0, 100)
 LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadGui
+LoadFrame.Parent = LoadFrame
 
 local LoadCorner = Instance.new("UICorner")
 LoadCorner.CornerRadius = UDim.new(0, 10)
@@ -69,17 +69,18 @@ LoadText.TextSize = 13
 LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
 LoadText.Parent = LoadFrame
 
+LoadFrame.Parent = LoadGui
+
 -- Loop Animasi Putar Icon & Teks Berkedip
 local animasiAktif = true
 task.spawn(function()
     local rotasi = 0
     while animasiAktif do
         rotasi = (rotasi + 10) % 360
-        LoadIcon.Rotation = rotasi
-        LoadText.TextTransparency = 0.3
+        if LoadIcon and LoadIcon.Parent then LoadIcon.Rotation = rotasi end
+        if LoadText and LoadText.Parent then LoadText.TextTransparency = 0.3 end
         task.wait(0.15)
-        LoadIcon.Rotation = rotasi
-        LoadText.TextTransparency = 0
+        if LoadText and LoadText.Parent then LoadText.TextTransparency = 0  end
         task.wait(0.15)
     end
 end)
@@ -89,7 +90,7 @@ end)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false -- Dimatikan dulu, aktif HANYA jika whitelist lolos
+ScreenGui.Enabled = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
@@ -480,9 +481,11 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM + DYNAMIC CENTER LOADER ]]
+-- [[ FIX UPDATE: SISTEM VERIFIKASI PREMIUM + ANTI KARAKTER TERSEMBUNYI ]]
 -- ====================================================================
 local function konversiKeDetik(waktuStr)
+    -- BARU: Bersihkan string dari karakter non-alfanumerik agar tidak ada sisa '\r'
+    waktuStr = waktuStr:gsub("[%c%s]", "")
     local angka = tonumber(waktuStr:match("%d+"))
     local satuan = waktuStr:match("%a")
     if not angka then return 0 end
@@ -513,11 +516,10 @@ task.spawn(function()
     LoadText.Text = "Verifying License..."
     LoadStroke.Color = Color3.fromRGB(255, 200, 0)
     
-    local usernameSekarang = string.lower(LocalPlayer.Name)
+    local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%c%s]", "")
     local sukses, isiFile = false, nil
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     
-    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
     for i = 1, 4 do
         sukses, isiFile = pcall(function()
             return game:HttpGet(bypassUrl)
@@ -526,7 +528,6 @@ task.spawn(function()
         task.wait(0.6)
     end
     
-    -- JIKA SERVER REJECT ATAU DOWN
     if not sukses or not isiFile or #isiFile < 3 then
         animasiAktif = false
         LoadIcon.Text = "❌"
@@ -542,13 +543,15 @@ task.spawn(function()
     local terdaftar = false
     local durasiDetik = 0
     
-    -- Pemrosesan String Anti-Bug
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        local dataBersih = baris:gsub(",", " ")
+        -- Ganti koma dan bersihkan karakter kontrol tak terlihat (\r) pada baris
+        local dataBersih = baris:gsub(",", " "):gsub("%c", "")
         local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
         
         if user and waktu then
-            if string.lower(user) == usernameSekarang then
+            -- Bersihkan spasi sisa di dalam data pencocokan
+            user = string.lower(user):gsub("%s", "")
+            if user == usernameSekarang then
                 terdaftar = true
                 durasiDetik = konversiKeDetik(waktu)
                 break
@@ -556,7 +559,6 @@ task.spawn(function()
         end
     end
     
-    -- KONDISI JIKA TIDAK TERSEDIA / DI-TOLAK
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
@@ -578,7 +580,6 @@ task.spawn(function()
         return
     end
 
-    -- KONDISI JIKA SUKSES / DILANJUTKAN
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -586,13 +587,11 @@ task.spawn(function()
     LoadText.Text = "Access Granted!"
     task.wait(0.8)
     
-    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- Jalankan Live Counter Masa Aktif
     while durasiDetik > 0 do
         TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
         task.wait(1)
