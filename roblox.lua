@@ -26,7 +26,7 @@ local FILE_PREFIX = "GameCopy_"
 local TargetFolder = workspace
 
 -- ==================================================
--- [[ ANIMASI LOADING DI TENGAH LAYAR ]]
+-- [[ BARU: ANIMASI LOADING DI TENGAH LAYAR ]]
 -- ==================================================
 local LoadGui = Instance.new("ScreenGui")
 LoadGui.Name = "SpyzyyLoader"
@@ -35,11 +35,11 @@ LoadGui.Parent = PlayerGui
 
 local LoadFrame = Instance.new("Frame")
 LoadFrame.Name = "LoadFrame"
-LoadFrame.Size = UDim2.new(0, 220, 0, 100)
-LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -50)
+LoadFrame.Size = UDim2.new(0, 220, 0, 130) -- Ukuran ditinggikan sedikit untuk tombol refresh
+LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -65)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadFrame
+LoadFrame.Parent = LoadGui
 
 local LoadCorner = Instance.new("UICorner")
 LoadCorner.CornerRadius = UDim.new(0, 10)
@@ -69,19 +69,44 @@ LoadText.TextSize = 13
 LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
 LoadText.Parent = LoadFrame
 
-LoadFrame.Parent = LoadGui
+-- TOMBOL REFRESH WHITELIST (Hanya muncul/aktif saat gagal)
+local RefreshWLButton = Instance.new("TextButton")
+RefreshWLButton.Size = UDim2.new(0, 180, 0, 25)
+RefreshWLButton.Position = UDim2.new(0.5, -90, 0, 95)
+RefreshWLButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+RefreshWLButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshWLButton.Text = "🔄 Check Whitelist Again"
+RefreshWLButton.Font = Enum.Font.SourceSansBold
+RefreshWLButton.TextSize = 12
+RefreshWLButton.Visible = false -- Sembunyikan di awal
+RefreshWLButton.Parent = LoadFrame
+
+local RefreshWLCorner = Instance.new("UICorner")
+RefreshWLCorner.CornerRadius = UDim.new(0, 5)
+RefreshWLCorner.Parent = RefreshWLButton
+
+local RefreshWLStroke = Instance.new("UIStroke")
+RefreshWLStroke.Thickness = 1
+RefreshWLStroke.Color = Color3.fromRGB(80, 80, 90)
+RefreshWLStroke.Parent = RefreshWLButton
 
 -- Loop Animasi Putar Icon & Teks Berkedip
 local animasiAktif = true
 task.spawn(function()
     local rotasi = 0
-    while animasiAktif do
-        rotasi = (rotasi + 10) % 360
-        if LoadIcon and LoadIcon.Parent then LoadIcon.Rotation = rotasi end
-        if LoadText and LoadText.Parent then LoadText.TextTransparency = 0.3 end
-        task.wait(0.15)
-        if LoadText and LoadText.Parent then LoadText.TextTransparency = 0  end
-        task.wait(0.15)
+    while true do
+        if animasiAktif then
+            rotasi = (rotasi + 10) % 360
+            LoadIcon.Rotation = rotasi
+            LoadText.TextTransparency = 0.3
+            task.wait(0.15)
+            LoadIcon.Rotation = rotasi
+            LoadText.TextTransparency = 0
+            task.wait(0.15)
+        else
+            LoadIcon.Rotation = 0
+            task.wait(0.5)
+        end
     end
 end)
 
@@ -90,7 +115,7 @@ end)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false
+ScreenGui.Enabled = false -- Dimatikan dulu, aktif HANYA jika whitelist lolos
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
@@ -481,11 +506,9 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ FIX UPDATE: SISTEM VERIFIKASI PREMIUM + ANTI KARAKTER TERSEMBUNYI ]]
+-- [[ SISTEM VERIFIKASI PREMIUM + DYNAMIC CENTER LOADER ]]
 -- ====================================================================
 local function konversiKeDetik(waktuStr)
-    -- BARU: Bersihkan string dari karakter non-alfanumerik agar tidak ada sisa '\r'
-    waktuStr = waktuStr:gsub("[%c%s]", "")
     local angka = tonumber(waktuStr:match("%d+"))
     local satuan = waktuStr:match("%a")
     if not angka then return 0 end
@@ -511,47 +534,49 @@ local function formatWaktu(totalDetik)
     end
 end
 
--- Thread Utama Verifikasi & Kontrol Animasi Loading
-task.spawn(function()
+-- Fungsi Utama untuk Cek Whitelist (Bisa dipanggil berulang kali)
+local function PeriksaWhitelist()
+    animasiAktif = true
+    RefreshWLButton.Visible = false
+    LoadIcon.Text = "⏳"
     LoadText.Text = "Verifying License..."
     LoadStroke.Color = Color3.fromRGB(255, 200, 0)
+    LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
     
-    local usernameSekarang = string.lower(LocalPlayer.Name):gsub("[%c%s]", "")
+    local usernameSekarang = string.lower(LocalPlayer.Name)
     local sukses, isiFile = false, nil
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     
+    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
     for i = 1, 4 do
         sukses, isiFile = pcall(function()
             return game:HttpGet(bypassUrl)
         end)
         if sukses and isiFile and #isiFile > 3 then break end
-        task.wait(0.6)
+        task.wait(0.5)
     end
     
+    -- JIKA SERVER REJECT ATAU DOWN
     if not sukses or not isiFile or #isiFile < 3 then
         animasiAktif = false
         LoadIcon.Text = "❌"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
         LoadText.Text = "Connection Failed!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Gagal mengambil data akses dari GitHub. Pastikan Internet Anda stabil.")
+        RefreshWLButton.Visible = true
         return
     end
     
     local terdaftar = false
     local durasiDetik = 0
     
+    -- Pemrosesan String Anti-Bug
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        -- Ganti koma dan bersihkan karakter kontrol tak terlihat (\r) pada baris
-        local dataBersih = baris:gsub(",", " "):gsub("%c", "")
+        local dataBersih = baris:gsub(",", " ")
         local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
         
         if user and waktu then
-            -- Bersihkan spasi sisa di dalam data pencocokan
-            user = string.lower(user):gsub("%s", "")
-            if user == usernameSekarang then
+            if string.lower(user) == usernameSekarang then
                 terdaftar = true
                 durasiDetik = konversiKeDetik(waktu)
                 break
@@ -559,27 +584,26 @@ task.spawn(function()
         end
     end
     
+    -- KONDISI JIKA TIDAK TERSEDIA / DI-TOLAK (TIDAK DI-KICK)
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
-        LoadText.Text = "Access Denied!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Akun (" .. LocalPlayer.Name .. ") Tidak Terdaftar Whitelist!\nHubungi Admin: @sptzyy")
+        LoadText.Text = "Not Whitelisted! Contact: @sptzyy"
+        RefreshWLButton.Visible = true -- Tampilkan tombol refresh
         return
     elseif durasiDetik <= 0 then
         animasiAktif = false
         LoadIcon.Text = "⏰"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
-        LoadText.Text = "License Expired!"
-        task.wait(1.5)
-        LoadGui:Destroy()
-        LocalPlayer:Kick("Masa aktif Script Anda sudah Habis!\nHubungi Admin: @sptzyy")
+        LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        LoadText.Text = "License Expired! Contact: @sptzyy"
+        RefreshWLButton.Visible = true -- Tampilkan tombol refresh
         return
     end
 
+    -- KONDISI JIKA SUKSES / DILANJUTKAN
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -587,18 +611,28 @@ task.spawn(function()
     LoadText.Text = "Access Granted!"
     task.wait(0.8)
     
+    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    while durasiDetik > 0 do
-        TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
-        task.wait(1)
-        durasiDetik = durasiDetik - 1
-    end
-    
-    TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
-    task.wait(0.3)
-    LocalPlayer:Kick("Masa aktif bermain telah habis (Kadaluarsa)!")
-end)
+    -- Jalankan Live Counter Masa Aktif
+    task.spawn(function()
+        while durasiDetik > 0 do
+            TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
+            task.wait(1)
+            durasiDetik = durasiDetik - 1
+        end
+        TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
+        task.wait(0.3)
+        ScreenGui.Enabled = false
+        LocalPlayer:Kick("Masa aktif bermain telah habis (Kadaluarsa)!")
+    end)
+end
+
+-- Hubungkan fungsi refresh ke tombol GUI
+RefreshWLButton.MouseButton1Click:Connect(PeriksaWhitelist)
+
+-- Jalankan pengecekan pertama kali saat script load
+task.spawn(PeriksaWhitelist)
