@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- URL GITHUB RAW WHITELIST ANDA
-local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
+local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txtheads/main/akses.txt"
 
 -- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
