@@ -11,7 +11,7 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.Player
 -- URL GITHUB RAW WHITELIST ANDA
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
--- Mendapatkan Nama Game Secara Otomatis (Aman dari Delay)
+-- Mendapatkan Nama Game Secara Otomatis
 local GameName = "Unknown_Game"
 task.spawn(function()
     pcall(function()
@@ -35,11 +35,11 @@ LoadGui.Parent = PlayerGui
 
 local LoadFrame = Instance.new("Frame")
 LoadFrame.Name = "LoadFrame"
-LoadFrame.Size = UDim2.new(0, 220, 0, 130) -- Ukuran ditinggikan sedikit untuk tombol refresh
+LoadFrame.Size = UDim2.new(0, 220, 0, 130)
 LoadFrame.Position = UDim2.new(0.5, -110, 0.5, -65)
 LoadFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 LoadFrame.BorderSizePixel = 0
-LoadFrame.Parent = LoadGui
+LoadFrame.Parent = LoadGui -- Memastikan parent-nya adalah LoadGui, bukan dirinya sendiri!
 
 local LoadCorner = Instance.new("UICorner")
 LoadCorner.CornerRadius = UDim.new(0, 10)
@@ -69,7 +69,7 @@ LoadText.TextSize = 13
 LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
 LoadText.Parent = LoadFrame
 
--- TOMBOL REFRESH WHITELIST (Hanya muncul/aktif saat gagal)
+-- TOMBOL REFRESH WHITELIST
 local RefreshWLButton = Instance.new("TextButton")
 RefreshWLButton.Size = UDim2.new(0, 180, 0, 25)
 RefreshWLButton.Position = UDim2.new(0.5, -90, 0, 95)
@@ -78,7 +78,7 @@ RefreshWLButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 RefreshWLButton.Text = "🔄 Check Whitelist Again"
 RefreshWLButton.Font = Enum.Font.SourceSansBold
 RefreshWLButton.TextSize = 12
-RefreshWLButton.Visible = false -- Sembunyikan di awal
+RefreshWLButton.Visible = false
 RefreshWLButton.Parent = LoadFrame
 
 local RefreshWLCorner = Instance.new("UICorner")
@@ -115,7 +115,7 @@ end)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = false -- Dimatikan dulu, aktif HANYA jika whitelist lolos
+ScreenGui.Enabled = false
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
@@ -534,20 +534,19 @@ local function formatWaktu(totalDetik)
     end
 end
 
--- Fungsi Utama untuk Cek Whitelist (Bisa dipanggil berulang kali)
+-- Fungsi Utama untuk Cek Whitelist
 local function PeriksaWhitelist()
     animasiAktif = true
     RefreshWLButton.Visible = false
     LoadIcon.Text = "⏳"
     LoadText.Text = "Verifying License..."
-    LoadStroke.Color = Color3.fromRGB(255, 200, 0)
+    LoadStroke.Color = Color3.fromRGB(0, 200, 255)
     LoadText.TextColor3 = Color3.fromRGB(200, 200, 200)
     
     local usernameSekarang = string.lower(LocalPlayer.Name)
     local sukses, isiFile = false, nil
     local bypassUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
     
-    -- Request HTTP ke Server GitHub (Max 4 Percobaan Kilat)
     for i = 1, 4 do
         sukses, isiFile = pcall(function()
             return game:HttpGet(bypassUrl)
@@ -556,7 +555,6 @@ local function PeriksaWhitelist()
         task.wait(0.5)
     end
     
-    -- JIKA SERVER REJECT ATAU DOWN
     if not sukses or not isiFile or #isiFile < 3 then
         animasiAktif = false
         LoadIcon.Text = "❌"
@@ -570,7 +568,6 @@ local function PeriksaWhitelist()
     local terdaftar = false
     local durasiDetik = 0
     
-    -- Pemrosesan String Anti-Bug
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
         local dataBersih = baris:gsub(",", " ")
         local user, waktu = string.match(dataBersih, "%s*(%S+)%s+(%S+)%s*")
@@ -584,14 +581,13 @@ local function PeriksaWhitelist()
         end
     end
     
-    -- KONDISI JIKA TIDAK TERSEDIA / DI-TOLAK (TIDAK DI-KICK)
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
         LoadText.Text = "Not Whitelisted! Contact: @sptzyy"
-        RefreshWLButton.Visible = true -- Tampilkan tombol refresh
+        RefreshWLButton.Visible = true
         return
     elseif durasiDetik <= 0 then
         animasiAktif = false
@@ -599,11 +595,10 @@ local function PeriksaWhitelist()
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
         LoadText.Text = "License Expired! Contact: @sptzyy"
-        RefreshWLButton.Visible = true -- Tampilkan tombol refresh
+        RefreshWLButton.Visible = true
         return
     end
 
-    -- KONDISI JIKA SUKSES / DILANJUTKAN
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -611,13 +606,11 @@ local function PeriksaWhitelist()
     LoadText.Text = "Access Granted!"
     task.wait(0.8)
     
-    -- Hancurkan Animasi Loading dan Buka UI Utama Map Copy
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- Jalankan Live Counter Masa Aktif
     task.spawn(function()
         while durasiDetik > 0 do
             TimeLabel.Text = "⏳ Sisa Waktu: " .. formatWaktu(durasiDetik)
@@ -631,8 +624,5 @@ local function PeriksaWhitelist()
     end)
 end
 
--- Hubungkan fungsi refresh ke tombol GUI
 RefreshWLButton.MouseButton1Click:Connect(PeriksaWhitelist)
-
--- Jalankan pengecekan pertama kali saat script load
 task.spawn(PeriksaWhitelist)
