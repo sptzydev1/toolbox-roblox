@@ -8,6 +8,14 @@ local LocalPlayer = Players.LocalPlayer
 -- Proteksi Instan PlayerGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.PlayerGui
 
+-- ANTI-TUMPUK: Hancurkan GUI lama jika mendeteksi execute ulang
+if PlayerGui:FindFirstChild("SpyzyyLoader") then
+    PlayerGui.SpyzyyLoader:Destroy()
+end
+if PlayerGui:FindFirstChild("SpyzyyCopyGuiV2") then
+    PlayerGui.SpyzyyCopyGuiV2:Destroy()
+end
+
 -- URL GITHUB RAW WHITELIST ANDA
 local GITHUB_RAW_URL = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
 
@@ -612,7 +620,7 @@ local function PeriksaWhitelist()
         LoadStroke.Color = Color3.fromRGB(255, 50, 50)
         LoadText.TextColor3 = Color3.fromRGB(255, 100, 100)
         LoadText.Text = "License Expired! (Real-Time Block)"
-        RefreshWLButton.Visible = false -- Sembunyikan total agar tidak bisa diclick ulang
+        RefreshWLButton.Visible = false
         return
     end
 
@@ -641,7 +649,7 @@ local function PeriksaWhitelist()
             task.wait(1)
         end
         
-        -- KETIKA JAM SEKARANG MELEWATI TARGET DI GITHUB
+        -- KETIKA JAM WIB SUDAH LEWAT, PANEL OTOMATIS MATI DAN LANGSUNG KICK PLAYER
         ScreenGui.Enabled = false
         TimeLabel.Text = "⏳ Sisa Waktu: EXPIRED"
         LocalPlayer:Kick("Masa lisensi premium Anda telah berakhir!")
