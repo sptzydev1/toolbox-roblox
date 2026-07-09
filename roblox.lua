@@ -177,7 +177,7 @@ local TimeLabel = Instance.new("TextLabel")
 TimeLabel.Size = UDim2.new(1, -10, 0, 22)
 TimeLabel.Position = UDim2.new(0, 8, 0, 20)
 TimeLabel.BackgroundTransparency = 1
-TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 150) -- Diubah jadi warna hijau sukses
+TimeLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 TimeLabel.Font = Enum.Font.SourceSansBold
 TimeLabel.TextSize = 12
 TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -503,7 +503,7 @@ end
 RefreshButton.MouseButton1Click:Connect(_G.UpdatePasteList)
 
 -- ====================================================================
--- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (TANPA WAKTU) ]]
+-- [[ SISTEM VERIFIKASI PREMIUM ONLY USERNAME (AUTOMATIC LOGIC) ]]
 -- ====================================================================
 local function PeriksaWhitelist()
     animasiAktif = true
@@ -527,9 +527,8 @@ local function PeriksaWhitelist()
 
     local terdaftar = false
     
-    -- Membaca GitHub per baris
+    -- Membaca GitHub per baris (Proses)
     for baris in string.gmatch(isiFile, "[^\r\n]+") do
-        -- Membersihkan spasi di awal/akhir baris
         local userDitemukan = string.match(baris, "%s*(%S+)%s*")
         if userDitemukan and string.lower(userDitemukan) == usernameSekarang then
             terdaftar = true
@@ -537,6 +536,7 @@ local function PeriksaWhitelist()
         end
     end
     
+    -- Hasil Pengecekan Awal
     if not terdaftar then
         animasiAktif = false
         LoadIcon.Text = "⛔"
@@ -546,7 +546,7 @@ local function PeriksaWhitelist()
         return
     end
 
-    -- Jika Username Terdaftar
+    -- Jika Username Sukses Terdaftar
     animasiAktif = false
     LoadIcon.Text = "✅"
     LoadStroke.Color = Color3.fromRGB(0, 255, 150)
@@ -555,14 +555,14 @@ local function PeriksaWhitelist()
     
     LoadGui:Destroy()
     UserLabel.Text = "👤 User: " .. LocalPlayer.Name
-    TimeLabel.Text = "👑 Status: PREMIUM USER" -- Mengganti teks sisa waktu menjadi status permanen
+    TimeLabel.Text = "👑 Status: PREMIUM USER"
     ScreenGui.Enabled = true
     _G.UpdatePasteList()
     
-    -- LOOP SINKRONISASI LATAR BELAKANG (Cek berkala setiap 30 detik apakah username dihapus admin)
+    -- LOOP SINKRONISASI LATAR BELAKANG (Logika Deteksi Expired Otomatis secara Real-Time)
     task.spawn(function()
         while true do
-            task.wait(30)
+            task.wait(30) -- Berjalan otomatis di latar belakang setiap 30 detik
             local checkUrl = GITHUB_RAW_URL .. "?nocache=" .. math.random(1, 999999)
             local s, konten = pcall(function() return game:HttpGet(checkUrl) end)
             if s and konten then
@@ -574,10 +574,11 @@ local function PeriksaWhitelist()
                         break
                     end
                 end
-                -- Jika nama dihapus dari GitHub saat game jalan, panel otomatis mati dan kick player!
+                
+                -- Jika nama dihapus dari GitHub, panel mati & kick instan!
                 if not masihAda then
                     ScreenGui.Enabled = false
-                    LocalPlayer:Kick("Lisensi Anda telah dicabut oleh Admin!")
+                    LocalPlayer:Kick("Masa aktif lisensi premium Anda telah berakhir/dicabut!")
                     break
                 end
             end
