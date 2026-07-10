@@ -32,7 +32,7 @@ CheckLicense()
 
 if not IsWhitelisted then
     -- Jika TIDAK terdaftar, kick player atau beri notifikasi (silakan pilih metode di bawah)
-    local pesanGagal = "❌ Akun @" .. LocalPlayer.Name .. " tidak terdaftar! Silakan hubungi pemilik script untuk membeli versi Premium."
+    local pesanGagal = "❌ Akun @" .. LocalPlayer.Name .. " tidak terdaftar! Silakan hubungi pemilik script untuk membeli."
     
     -- Opsi 1: Kick player langsung dari game (Sangat Aman)
     LocalPlayer:Kick(pesanGagal)
