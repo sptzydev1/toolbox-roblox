@@ -1,10 +1,54 @@
--- [[ CONFIGURASI & VARIABLE UTAMA ]]
-local HttpService = game:GetService("HttpService")
-local UIS = game:GetService("UserInputService")
+-- [[ VERIFIKASI LISENSI REALTIME ]]
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+
+local URL_AKSES = "https://raw.githubusercontent.com/sptzydev1/premium-script/refs/heads/main/akses.txt"
+local IsWhitelisted = false
+
+-- Fungsi melakukan pengecekan ke GitHub
+local function CheckLicense()
+    local success, response = pcall(function()
+        return game:HttpGet(URL_AKSES)
+    end)
+    
+    if success and response then
+        -- Memisahkan isi teks per baris (menghandle spasi/newline)
+        for username in string.gmatch(response, "[^\r\n]+") do
+            -- Menghilangkan spasi di awal/akhir baris jika ada
+            username = username:gsub("%s+", "")
+            if string.lower(LocalPlayer.Name) == string.lower(username) then
+                IsWhitelisted = true
+                break
+            end
+        end
+    else
+        warn("❌ Gagal terhubung ke server verifikasi lisensi.")
+    end
+end
+
+-- Jalankan pengecekan lisensi sebelum masuk ke fitur utama
+CheckLicense()
+
+if not IsWhitelisted then
+    -- Jika TIDAK terdaftar, kick player atau beri notifikasi (silakan pilih metode di bawah)
+    local pesanGagal = "❌ Akun @" .. LocalPlayer.Name .. " tidak terdaftar! Silakan hubungi pemilik script untuk membeli versi Premium."
+    
+    -- Opsi 1: Kick player langsung dari game (Sangat Aman)
+    LocalPlayer:Kick(pesanGagal)
+    
+    -- Opsi 2: Jika tidak ingin di-kick melainkan hanya membatalkan script, aktifkan return di bawah:
+    return
+end
+
+-- =============================================================================
+-- [[ FITUR UTAMA SCRIPT (HANYA BERJALAN JIKA LISENSI VALID) ]]
+-- =============================================================================
+
+-- [[ CONFIGURASI & VARIABLE UTAMA ]]
+local UIS = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserService = game:GetService("UserService")
-local LocalPlayer = Players.LocalPlayer
 
 -- Proteksi Instan PlayerGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5) or LocalPlayer.PlayerGui
@@ -27,13 +71,13 @@ local TargetFolder = workspace
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SpyzyyCopyGuiV2"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Enabled = true -- Langsung aktif tanpa check lisensi
+ScreenGui.Enabled = true
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 230, 0, 360) -- Ukuran ditinggikan sedikit agar info profile muat
-MainFrame.Position = UDim2.new(0.5, -115, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 230, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -115, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -58,9 +102,9 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 15
 Title.Parent = MainFrame
 
--- [[ PANEL PROFILE USER (YANG DIPERBARUI) ]]
+-- [[ PANEL PROFILE USER ]]
 local InfoPanel = Instance.new("Frame")
-InfoPanel.Size = UDim2.new(0, 206, 0, 85) -- Ukuran diperbesar untuk profil lengkap
+InfoPanel.Size = UDim2.new(0, 206, 0, 85)
 InfoPanel.Position = UDim2.new(0, 12, 0, 40)
 InfoPanel.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
 InfoPanel.BorderSizePixel = 0
@@ -104,16 +148,13 @@ local BioLabel = CreateProfileLabel("📝 Bio: Loading...", Color3.fromRGB(150, 
 task.spawn(function()
     pcall(function()
         NameLabel.Text = "👤 Name: " .. LocalPlayer.DisplayName
-        
-        -- Hitung Umur Akun (Hari)
         local accountAge = LocalPlayer.AccountAge
         AgeLabel.Text = "📅 Umur Akun: " .. accountAge .. " Hari"
         
-        -- Ambil Bio Resmi Player
         local playerInfo = UserService:GetUserInfosByUserIdsAsync({LocalPlayer.UserId})
         if playerInfo and playerInfo[1] and playerInfo[1].Description ~= "" then
             local bio = playerInfo[1].Description
-            if #bio > 22 then bio = string.sub(bio, 1, 20) .. ".." end -- Batasi teks bio agar rapi
+            if #bio > 22 then bio = string.sub(bio, 1, 20) .. ".." end
             BioLabel.Text = "📝 Bio: " .. bio
         else
             BioLabel.Text = "📝 Bio: (Kosong)"
@@ -121,10 +162,52 @@ task.spawn(function()
     end)
 end)
 
+-- [[ BARU: PANEL INFO SCRIPT PREMIUM ]]
+local ScriptInfoPanel = Instance.new("Frame")
+ScriptInfoPanel.Size = UDim2.new(0, 206, 0, 55)
+ScriptInfoPanel.Position = UDim2.new(0, 12, 0, 130)
+ScriptInfoPanel.BackgroundColor3 = Color3.fromRGB(28, 20, 35)
+ScriptInfoPanel.BorderSizePixel = 0
+ScriptInfoPanel.Parent = MainFrame
+
+local ScriptInfoCorner = Instance.new("UICorner")
+ScriptInfoCorner.CornerRadius = UDim.new(0, 6)
+ScriptInfoCorner.Parent = ScriptInfoPanel
+
+local ScriptInfoStroke = Instance.new("UIStroke")
+ScriptInfoStroke.Thickness = 1
+ScriptInfoStroke.Color = Color3.fromRGB(120, 0, 255)
+ScriptInfoStroke.Parent = ScriptInfoPanel
+
+local ScriptLayout = Instance.new("UIListLayout")
+ScriptLayout.Padding = UDim.new(0, 1)
+ScriptLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ScriptLayout.Parent = ScriptInfoPanel
+
+local function CreateScriptLabel(text, color, order)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 0, 16)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 11
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = text
+    label.LayoutOrder = order
+    label.Parent = ScriptInfoPanel
+    return label
+end
+
+CreateScriptLabel("✨ Script: Spyzyy Copy Map", Color3.fromRGB(255, 255, 255), 1)
+CreateScriptLabel("👑 Status: PREMIUM VERSION", Color3.fromRGB(255, 200, 0), 2)
+CreateScriptLabel("🛠️ Maker: @Spyzyy (V2.0)", Color3.fromRGB(0, 255, 200), 3)
+
+
 -- [[ TOMBOL & ELEMENT GUI SCRIPT ]]
 local CopyButton = Instance.new("TextButton")
 CopyButton.Size = UDim2.new(0, 206, 0, 35)
-CopyButton.Position = UDim2.new(0, 12, 0, 135) -- Posisi disesuaikan dengan info panel baru
+CopyButton.Position = UDim2.new(0, 12, 0, 195)
 CopyButton.BackgroundColor3 = Color3.fromRGB(0, 130, 200)
 CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CopyButton.Text = "COPYY OM"
@@ -138,9 +221,9 @@ CopyButtonCorner.Parent = CopyButton
 
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, -24, 0, 20)
-ListLabel.Position = UDim2.new(0, 12, 0, 175)
+ListLabel.Position = UDim2.new(0, 12, 0, 235)
 ListLabel.BackgroundTransparency = 1
-ListLabel.Text = "Pilih Data File Untuk Di-paste:"
+ListLabel.Text = "Pilih Data Hasil Untuk Di-Lihat:"
 ListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 ListLabel.TextXAlignment = Enum.TextXAlignment.Left
 ListLabel.Font = Enum.Font.SourceSansSemibold
@@ -149,7 +232,7 @@ ListLabel.Parent = MainFrame
 
 local ListScroll = Instance.new("ScrollingFrame")
 ListScroll.Size = UDim2.new(0, 206, 0, 115)
-ListScroll.Position = UDim2.new(0, 12, 0, 195)
+ListScroll.Position = UDim2.new(0, 12, 0, 255)
 ListScroll.BackgroundColor3 = Color3.fromRGB(14, 14, 16)
 ListScroll.BorderSizePixel = 0
 ListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -166,10 +249,10 @@ ListLayout.Parent = ListScroll
 
 local RefreshButton = Instance.new("TextButton")
 RefreshButton.Size = UDim2.new(0, 206, 0, 22)
-RefreshButton.Position = UDim2.new(0, 12, 0, 320)
+RefreshButton.Position = UDim2.new(0, 12, 0, 380)
 RefreshButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 RefreshButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-RefreshButton.Text = "🔄 Refresh List File"
+RefreshButton.Text = "🔄 Refresh List"
 RefreshButton.Font = Enum.Font.SourceSans
 RefreshButton.TextSize = 11
 RefreshButton.Parent = MainFrame
@@ -427,7 +510,7 @@ _G.UpdatePasteList = function()
                     end)
                     
                     if success then
-                        FileSelectBtn.Text = " ✅ PASTE SUCCESSFUL!"
+                        FileSelectBtn.Text = " ✅ SUCCESSFUL!"
                         FileSelectBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
                     else
                         FileSelectBtn.Text = " ❌ ERROR OCCURRED!"
